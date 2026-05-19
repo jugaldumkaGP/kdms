@@ -57,6 +57,10 @@ These do not block Phase 1a but should be fixed in v3.1 or during build:
 
 **Goal:** Infrastructure for photos and merge metadata; fix dashboard day-visitor count bug. Safe to deploy to production before PWA.
 
+**Status:** Code complete — operator deploy: `docs/phase1a-deploy-steps.md`; validation: `docs/validation_report_phase1a.md`. **DB (all-in-one):** `api/config/DB Files/Phase_1a_production_complete.sql`.
+
+**Decisions:** Day-visitor dashboard = `D` + `T` + accommodation **Other**; single bucket `kdms-photos`; unique index in migration; `run-kdms-registration` SA in Terraform; no legacy status migration.
+
 ### Schema / infra
 
 - [ ] GCS bucket `kdms-photos` (region aligned with Cloud SQL, e.g. `asia-south1`)
@@ -69,11 +73,11 @@ These do not block Phase 1a but should be fixed in v3.1 or during build:
 
 ### Application
 
-- [ ] kdms-api dual-read: GCS path if set, else LONGBLOB (`devotees.php`, `Image.php`, report paths)
-- [ ] Migration script: BLOB → GCS (no NULL BLOBs yet)
-- [ ] **Bug fix:** `clsDashboard.php` — `Devotee_Status = 'D'` (not `'Day visitor'`)
-- [ ] Review dashboard filters using `Devotee_ID_Type = 'Temporary'` — may not match PWA ID types
-- [ ] Optional: one-time SQL `UPDATE devotee SET Devotee_Status='D' WHERE Devotee_Status='Day visitor'`
+- [x] kdms-api dual-read: `api/getPhoto.php`, `api/getIdImage.php`, `includes/PhotoStorage.php` (existing `devotees.php` unchanged in 1a)
+- [x] Migration script: `scripts/migrate_photos_to_gcs.php` (dry-run only in 1a)
+- [x] **Bug fix:** `clsDashboard.php` — `D` + `T` + `Accomodation_Name = 'Other'`
+- [x] Removed `Devotee_ID_Type = 'Temporary'` filter from day-visitor count
+- [x] Legacy status migration skipped (no legacy day visitors expected)
 
 ### Verification
 
@@ -95,7 +99,8 @@ These do not block Phase 1a but should be fixed in v3.1 or during build:
 
 ### Service
 
-- [ ] `Services/kdms-registration/` (or equivalent) — PHP Cloud Run, public ingress, separate SA
+- [ ] PWA registration assigns `devotee_accomodation` → accommodation **Other** (required for dashboard count)
+- [ ] `Services/kdms-registration/` (or equivalent) — PHP Cloud Run, public ingress, separate SA (`run-kdms-registration` SA exists from Phase 1a Terraform)
 - [ ] Terraform: Cloud Run service, secrets, env (`KDMS_API_BASE_URL`, `ACTIVE_EVENT_ID`, Document AI processor ID)
 - [ ] `POST /api/register`, `POST /api/ocr-extract`, `GET /api/health`
 - [ ] `GET /api/selfie-url` — signed GCS upload URL (optional selfie)

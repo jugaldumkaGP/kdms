@@ -446,3 +446,9 @@ variable "ocr_allow_unauthenticated" {
   type        = bool
   default     = true
 }
+
+variable "gcs_photos_bucket_name" {
+  description = "Private GCS bucket for devotee photos and ID images (Phase 1a+)."
+  type        = string
+  default     = "kdms-photos"
+}

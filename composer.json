@@ -4,6 +4,7 @@
   "description": "KDMS — Devotee management (PHP)",
   "license": "proprietary",
   "require": {
-    "php": ">=8.1"
+    "php": ">=8.1",
+    "google/cloud-storage": "^1.44"
   }
 }

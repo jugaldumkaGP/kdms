@@ -63,7 +63,8 @@ locals {
     # PDO expects KDMS_* vars (see api/config/database.php); Laravel-style DB_* are kept for Composer/tools.
     KDMS_DB_NAME   = var.db_name
     KDMS_DB_USER   = var.db_username
-    KDMS_DB_SOCKET = "/cloudsql/${local.sql_connection_name}"
+    KDMS_DB_SOCKET          = "/cloudsql/${local.sql_connection_name}"
+    KDMS_GCS_PHOTOS_BUCKET  = var.gcs_photos_bucket_name
     DB_CONNECTION  = "mysql"
     DB_HOST        = "/cloudsql/${local.sql_connection_name}"
     DB_PORT        = "3306"
@@ -86,6 +87,7 @@ locals {
     "KDMS_DB_NAME",
     "KDMS_DB_USER",
     "KDMS_DB_SOCKET",
+    "KDMS_GCS_PHOTOS_BUCKET",
     "DB_CONNECTION",
     "DB_HOST",
     "DB_PORT",

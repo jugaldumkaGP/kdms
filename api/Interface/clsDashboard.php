@@ -97,10 +97,12 @@ class clsDashboard {
             FROM
             devotee d
             JOIN devotee_accomodation da ON d.Devotee_Key = da.Devotee_Key
+            JOIN accommodation_master am ON da.Accomodation_Key = am.Accomodation_Key
             WHERE
             da.Accommodation_Event = '$eventId'
-            AND d.Devotee_ID_Type = 'Temporary'
-            AND d.Devotee_Status = 'Day visitor'
+            AND d.Devotee_Status = 'D'
+            AND d.Devotee_Type = 'T'
+            AND am.Accomodation_Name = 'Other'
         ) + IFNULL(
             (
             SELECT
