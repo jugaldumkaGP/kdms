@@ -162,14 +162,53 @@ Then `terraform apply` (new Cloud Run revision). Switch to `93bab276fea4e9cc` on
 
 **Verify locally:**
 
+Phone photos and scans are often **>1MB**. Do **not** inline `$(base64 …)` in a `curl -d '…'` one-liner — zsh/bash hit **argument list too long** and `curl` never runs (Python then fails with `JSONDecodeError` on empty stdin). Build the JSON body in a file or with Python instead.
+
 ```bash
-# Should show entities: 4 for test Aadhaar
-curl -s -H "Authorization: Bearer $(gcloud auth print-access-token)" \
-  -H "Content-Type: application/json" \
-  -d '{"rawDocument":{"content":"'$(base64 -i /path/to/id.jpg | tr -d '\n')'","mimeType":"image/jpeg"}}' \
-  "https://asia-south1-documentai.googleapis.com/v1/projects/PROJECT/locations/asia-south1/processors/PROCESSOR_ID/processorVersions/pretrained-foundation-model-v1.5-2025-08-06:process" \
-  | python3 -c "import sys,json; d=json.load(sys.stdin); print(len(d.get('document',{}).get('entities',[])))"
+export PROJECT_ID=project-12f4b54b-d692-4583-83b
+export LOCATION=asia-south1
+export PROCESSOR_ID=d3d78b619ba1d6b
+export VERSION=pretrained-foundation-model-v1.5-2025-08-06
+export IMG=/path/to/id.jpg   # e.g. Services/kdms-ocr/test_images/shamsad.jpeg
+
+python3 <<'PY'
+import base64, json, mimetypes, os, subprocess, sys, urllib.request
+
+project = os.environ["PROJECT_ID"]
+location = os.environ["LOCATION"]
+processor_id = os.environ["PROCESSOR_ID"]
+version = os.environ["VERSION"]
+path = os.environ["IMG"]
+
+mime, _ = mimetypes.guess_type(path)
+mime = mime or "image/jpeg"
+with open(path, "rb") as f:
+    content = base64.b64encode(f.read()).decode()
+
+url = (
+    f"https://{location}-documentai.googleapis.com/v1/"
+    f"projects/{project}/locations/{location}/processors/{processor_id}"
+    f"/processorVersions/{version}:process"
+)
+body = json.dumps({"rawDocument": {"content": content, "mimeType": mime}}).encode()
+token = subprocess.check_output(["gcloud", "auth", "print-access-token"], text=True).strip()
+req = urllib.request.Request(
+    url,
+    data=body,
+    headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json"},
+    method="POST",
+)
+with urllib.request.urlopen(req) as resp:
+    d = json.load(resp)
+
+entities = d.get("document", {}).get("entities", [])
+print("entities", len(entities))
+for e in entities[:12]:
+    print(" ", e.get("type"), ":", (e.get("mentionText") or "")[:60])
+PY
 ```
+
+Expected for repo test Aadhaar `shamsad.jpeg` with foundation version: **4** entities. `kundan.png`: **8**.
 
 ## 5. IAM for Cloud Run SA
 
@@ -192,3 +231,5 @@ Set `DOCUMENT_AI_PROCESSOR_ID=mock` (see `docker-compose.split.yml`). OCR return
 | `Invalid choice: 'documentai'` | Use REST/curl or Console — not `gcloud documentai`. |
 | `PROCESSOR_TYPE_NOT_FOUND` | Run `fetchProcessorTypes` for your `LOCATION`; use exact `type` string (e.g. `ID_PROOFING_PROCESSOR`). |
 | Permission denied | Your user needs `roles/documentai.editor` or `roles/owner` on the project. |
+| `zsh: argument list too long: curl` | Image too large for inline base64 in shell; use the Python verify block above or `curl -d @request.json`. |
+| `JSONDecodeError` after curl | Usually empty curl output because the previous command failed; fix the curl/body step first. |

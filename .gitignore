@@ -13,3 +13,4 @@ Kainchi_Workspace.code-workspace
 !.env.example
 .idea
 **/.terraform/
+terraform/plan.tfplan
