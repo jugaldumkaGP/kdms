@@ -31,12 +31,12 @@ api_service_name = "kdms-api-prod"
 ar_repo    = "apps"
 image_name = "kdms-main"
 # Optional: pin with sha256:… ; leave empty to use branch-main (or set image_tag).
-image_digest = ""
+image_digest = "sha256:ae9416d41bdbba427366c4221314233eb1869796180d98be0f703331de3b30a9"
 image_tag    = ""
 # rolling_image_tag = "branch-main"  # when digest and image_tag are both empty
 
 api_image_name   = "kdms-api"
-api_image_digest = ""
+api_image_digest = "sha256:7f25291af693dd86a93c2df2f54ba348334a6bd9a3f35f976cc19643da76ad1f"
 api_image_tag    = ""
 
 runtime_sa_email  = "run-kdms@project-12f4b54b-d692-4583-83b.iam.gserviceaccount.com"
@@ -90,7 +90,7 @@ enable_reports_service = true
 reports_service_name = "kdms-reports-prod"
 reports_image_name   = "kdms-reports"
 reports_image_uri    = ""
-reports_image_digest = ""
+reports_image_digest = "sha256:5ca8d098b5e799479ba8b18318451449851672bf7db18758af57def3cf595b5e"
 reports_image_tag    = ""
 # Placeholder — replace with actual URL after first deploy or from `gcloud run services describe`.
 reports_url = "https://kdms-reports-prod-684080887473.asia-south1.run.app"
@@ -110,7 +110,7 @@ enable_ocr_service = true
 ocr_service_name = "kdms-ocr-prod"
 ocr_image_name   = "kdms-ocr"
 ocr_image_uri    = ""
-ocr_image_digest = "sha256:44badddbf213fca09be134c15f44573556ff03523028ce9c695beafc3760f710"
+ocr_image_digest = "sha256:e510584975259960f83639041ffd7ce5c7690d70b32463c997e6e5ccdb2415e4"
 ocr_image_tag    = ""
 ocr_url          = "https://kdms-ocr-prod-684080887473.asia-south1.run.app"
 
@@ -130,7 +130,7 @@ enable_registration_service = true
 registration_service_name = "kdms-registration-prod"
 registration_image_name   = "kdms-registration"
 registration_image_uri    = ""
-registration_image_digest = ""
+registration_image_digest = "sha256:2919a63a7b851836d08d63c03ea1c54dc0ce55e6388451c7d3af3e3181b60a83"
 registration_image_tag    = ""
 # Set after first deploy (QR poster / validation):
 registration_url = "https://kdms-registration-prod-zeqw3ha4ya-el.a.run.app"
