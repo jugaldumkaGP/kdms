@@ -6,7 +6,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libjpeg62-turbo-dev \
     unzip \
     && docker-php-ext-configure gd --with-jpeg \
-    && docker-php-ext-install pdo pdo_mysql gd \
+    && docker-php-ext-install pdo pdo_mysql gd bcmath \
     && rm -rf /var/lib/apt/lists/* \
     && printf '%s\n' \
         'upload_max_filesize=8M' \

@@ -158,6 +158,8 @@ document_ai_processor_version = "pretrained-foundation-model-v1.5-2025-08-06"
 
 Then `terraform apply` (new Cloud Run revision). Switch to `93bab276fea4e9cc` only when custom model evaluation is acceptable.
 
+**PHP extensions:** Cloud Run image must include `bcmath` (protobuf uses `bccomp()`). If logs show `Call to undefined function bccomp()`, rebuild `kdms-registration` after updating the Dockerfile.
+
 **Verify locally:**
 
 ```bash
