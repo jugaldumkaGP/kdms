@@ -41,11 +41,15 @@ The **`run-kdms@...`** service account must have **`roles/cloudsql.client`** on 
 
 CI does **not** deploy Cloud Run automatically; after each push to **`main`**, the **pin-tfvars** job in **`.github/workflows/push-gar.yml`** resolves each service’s **`branch-main`** digest in Artifact Registry and commits updated **`image_digest`** / **`*_image_digest`** fields in **`terraform.tfvars`** (commit message includes **`[skip ci]`** so only one image build runs per code push). Run **`terraform apply`** locally or in a separate pipeline to roll out new revisions.
 
-To pin digests manually without waiting for CI:
+To pin digests manually without waiting for CI (requires `gcloud` auth; works on macOS bash 3.2):
 
 ```bash
-bash terraform/scripts/ci-update-image-digests.sh terraform/terraform.tfvars
+cd terraform
+bash scripts/ci-update-image-digests.sh terraform.tfvars
+git diff terraform.tfvars
 ```
+
+**You should not need this on every deploy** if `pin-tfvars` succeeds on GitHub — `git pull` before `terraform apply` instead.
 
 ### Artifact Registry
 
@@ -85,8 +89,9 @@ terraform plan
 
 After CI builds and pushes images (and commits digests to **`terraform.tfvars`** on **`main`**):
 
-1. Pull latest **`main`** so **`terraform.tfvars`** has the new digests (or run **`terraform/scripts/ci-update-image-digests.sh`**).
-2. Plan and apply (from **`terraform/`**):
+1. **`git pull origin main`** so **`terraform/terraform.tfvars`** has the digests from **`pin-tfvars`** (do not apply from a stale checkout).
+2. **`cd terraform`** and run **`terraform plan`** — you should see **`containers.image`** change when pins moved; if the plan only shows **`scaling`** drift, your tfvars are still stale (pull again or run **`scripts/ci-update-image-digests.sh`**).
+3. Plan and apply (from **`terraform/`**):
 
 ```bash
 cd terraform
