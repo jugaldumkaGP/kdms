@@ -8,18 +8,22 @@ use PDO;
 
 final class AccommodationAssigner
 {
+    /** Day-visitor / PWA default accommodation (accommodation_master.Accomodation_Key). */
+    public const DAY_VISITOR_ACCOM_KEY = 'othr';
+
     public static function warnIfOtherMissing(PDO $db, string $eventId): void
     {
         if ($eventId === '') {
             return;
         }
         $stmt = $db->prepare(
-            'SELECT Accomodation_Key FROM accommodation_master WHERE Accomodation_Name = :name LIMIT 1'
+            'SELECT 1 FROM accommodation_master WHERE Accomodation_Key = :key LIMIT 1'
         );
-        $stmt->execute(['name' => 'Other']);
+        $stmt->execute(['key' => self::DAY_VISITOR_ACCOM_KEY]);
         if ($stmt->fetchColumn() === false) {
-            kdms_log('WARNING', "accommodation_master has no 'Other' row for event setup", [
-                'event' => 'configured',
+            kdms_log('WARNING', 'accommodation_master missing day-visitor accommodation key', [
+                'Accomodation_Key' => self::DAY_VISITOR_ACCOM_KEY,
+                'event' => $eventId,
             ]);
         }
     }
@@ -32,13 +36,15 @@ final class AccommodationAssigner
             return false;
         }
 
+        $accomKey = self::DAY_VISITOR_ACCOM_KEY;
         $stmt = $db->prepare(
-            'SELECT Accomodation_Key FROM accommodation_master WHERE Accomodation_Name = :name LIMIT 1'
+            'SELECT 1 FROM accommodation_master WHERE Accomodation_Key = :key LIMIT 1'
         );
-        $stmt->execute(['name' => 'Other']);
-        $accomKey = $stmt->fetchColumn();
-        if ($accomKey === false || $accomKey === null || $accomKey === '') {
-            kdms_log('WARNING', "No 'Other' accommodation in accommodation_master; skipping insert");
+        $stmt->execute(['key' => $accomKey]);
+        if ($stmt->fetchColumn() === false) {
+            kdms_log('WARNING', 'No day-visitor accommodation in accommodation_master; skipping insert', [
+                'Accomodation_Key' => $accomKey,
+            ]);
 
             return false;
         }

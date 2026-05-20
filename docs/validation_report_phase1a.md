@@ -112,7 +112,7 @@ curl -s "https://kdms-api-prod-.../api/getPhoto.php?devotee_key=P..." \
 
 - `Devotee_Status = 'D'`
 - `Devotee_Type = 'T'`
-- `accommodation_master.Accomodation_Name = 'Other'`
+- `accommodation_master.Accomodation_Key = 'othr'` (day visitor “Other”)
 - Requires `devotee_accomodation` for active event
 
 **Phase 1.5:** PWA registration must assign accommodation **Other** so counts match.
@@ -134,7 +134,7 @@ curl -s "https://kdms-api-prod-.../api/getPhoto.php?devotee_key=P..." \
 
 ## Assumptions and manual review
 
-1. **`accommodation_master` must contain `Accomodation_Name = 'Other'`** for the active event (capacity/availability initialized). Phase 1.5 registration will assign this accommodation to day visitors.
+1. **`accommodation_master` must contain `Accomodation_Key = 'othr'`** for the active event (capacity/availability initialized). Phase 1.5 registration assigns that key to day visitors.
 2. **Unique index** may fail with `Duplicate entry 'Aadhaar-'` when many rows have empty/`'-'` ID numbers — run `Phase_1a_normalize_id_before_unique_index.sql` (normalizes placeholders to NULL, then creates index). True duplicate Aadhaar numbers must be merged manually before index creation.
 3. **`getPhoto.php` / `getIdImage.php`** are new; existing UI still uses inline base64 from `devotees.php` until later phases wire them in.
 4. **Credentials:** DB credentials not stored in repo; operator runs SQL and dry-run with their own access.

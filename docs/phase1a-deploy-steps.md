@@ -163,11 +163,11 @@ Do **not** run full live migration until Phase 6/7 unless explicitly approved.
 
 ## Step 7 — Confirm accommodation “Other”
 
-Ensure `accommodation_master` has **`Accomodation_Name = 'Other'`** and availability row for `KDMS_EVENT_ID` (e.g. `2026JB`). Phase 1.5 PWA will assign day visitors to this accommodation.
+Ensure `accommodation_master` has **`Accomodation_Key = 'othr'`** (day visitor “Other”) and an `accommodation_availability` row for `KDMS_EVENT_ID` (e.g. `2026JB`). Phase 1.5 PWA assigns that key on register.
 
 ```sql
 SELECT Accomodation_Key, Accomodation_Name FROM accommodation_master
-WHERE Accomodation_Name = 'Other';
+WHERE Accomodation_Key = 'othr';
 ```
 
 ---

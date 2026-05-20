@@ -57,7 +57,7 @@ Setup: `docs/document-ai-setup.md`
 - [ ] Submit First Name, Last Name, ID Type, ID Number from phone browser
 - [ ] Response `{ "success": true, "Devotee_Key": "P..." }`
 - [ ] DB: `Devotee_Status='D'`, `Devotee_Type='T'`
-- [ ] `devotee_accomodation` row for `Accomodation_Name='Other'` and active event
+- [ ] `devotee_accomodation` row for `Accomodation_Key='othr'` and active event
 - [ ] `card_print_log` row with `Print_Status='A'`
 
 ---
