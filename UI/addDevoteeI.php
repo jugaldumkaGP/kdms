@@ -364,14 +364,6 @@ $is_key_available = false;
                                                     </div>
                                                 </div>
                                                 <div class="col-md-3">
-                                                    <div class="form-group" style="margin-top:36px;">
-                                                        <button type="button" class="btn btn-info btn-sm" id="btn-scan-id">Scan ID Card</button>
-                                                        <input type="file" id="id-scan-file" accept="image/*" capture="environment" style="display:none;">
-                                                        <p id="id-scan-status" class="text-muted small" style="margin-top:8px;" hidden></p>
-                                                        <input type="hidden" name="id_gcs_path" id="id_gcs_path" value="">
-                                                    </div>
-                                                </div>
-                                                <div class="col-md-3">
                                                     <div class="form-group" style="margin-top:62px;">
                                                         <label class="bmd-label-floating">ID Number</label>
                                                         <input type="text" class="form-control" name="devotee_id_number" id="devotee_id_number" value="<?php print_r($devotee_id_number); ?>">
@@ -760,7 +752,6 @@ $is_key_available = false;
 })();
 </script>
 <?php } ?>
-<script src="../assets/js/addDevoteeOcr.js"></script>
 <script src="../assets/js/pages/capture.js"></script>
 <script src="../assets/js/pages/captureID.js"></script>
 

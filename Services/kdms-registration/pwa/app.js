@@ -43,8 +43,7 @@
   const $ = (sel) => document.querySelector(sel);
   const form = $('#reg-form');
   const spinner = $('#spinner');
-  const dobInput = form.elements.Devotee_DOB;
-  const dobPicker = $('#dob-picker');
+  const dobPicker = form.elements.Devotee_DOB;
 
   function showSpinner(on) {
     spinner.hidden = !on;
@@ -55,39 +54,6 @@
     return str
       .toLowerCase()
       .replace(/\b([a-zà-ÿ])/g, (m) => m.toUpperCase());
-  }
-
-  function parseDobForSubmit(val) {
-    val = (val || '').trim();
-    if (!val) return '';
-    if (/^\d{4}-\d{2}-\d{2}$/.test(val)) return val;
-    const m = val.match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{4})$/);
-    if (m) {
-      const d = m[1].padStart(2, '0');
-      const mo = m[2].padStart(2, '0');
-      const y = m[3];
-      return y + '-' + mo + '-' + d;
-    }
-    return val;
-  }
-
-  function isoToDisplayDob(iso) {
-    if (!iso || !/^\d{4}-\d{2}-\d{2}$/.test(iso)) return iso || '';
-    const parts = iso.split('-');
-    return parts[2] + '-' + parts[1] + '-' + parts[0];
-  }
-
-  function syncDobPickerFromText() {
-    const iso = parseDobForSubmit(dobInput.value);
-    if (iso && /^\d{4}-\d{2}-\d{2}$/.test(iso)) {
-      dobPicker.value = iso;
-    }
-  }
-
-  function syncDobTextFromPicker() {
-    if (dobPicker.value) {
-      dobInput.value = isoToDisplayDob(dobPicker.value);
-    }
   }
 
   async function loadCsrf() {
@@ -138,9 +104,6 @@
     });
   });
 
-  dobPicker.addEventListener('change', syncDobTextFromPicker);
-  dobInput.addEventListener('blur', syncDobPickerFromText);
-
   $('#btn-scan').addEventListener('click', () => $('#id-file').click());
 
   $('#id-file').addEventListener('change', async (e) => {
@@ -158,7 +121,6 @@
       const data = await res.json();
       idGcsPath = data.id_gcs_path || '';
       OCR_FIELDS.forEach((name) => applyOcrField(name, data[name]));
-      syncDobPickerFromText();
       status.textContent = 'ID scanned. Please check and complete the form below.';
     } catch (err) {
       status.textContent = 'Could not read ID. Please enter details manually.';
@@ -229,7 +191,7 @@
       Devotee_First_Name: form.elements.Devotee_First_Name.value.trim(),
       Devotee_Last_Name: form.elements.Devotee_Last_Name.value.trim(),
       Devotee_Gender: form.elements.Devotee_Gender.value,
-      Devotee_DOB: parseDobForSubmit(form.elements.Devotee_DOB.value),
+      Devotee_DOB: (form.elements.Devotee_DOB.value || '').trim(),
       Devotee_ID_Type: form.elements.Devotee_ID_Type.value,
       Devotee_ID_Number: form.elements.Devotee_ID_Number.value.trim(),
       Devotee_Cell_Phone_Number: form.elements.Devotee_Cell_Phone_Number.value.trim(),
