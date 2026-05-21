@@ -31,12 +31,12 @@ api_service_name = "kdms-api-prod"
 ar_repo    = "apps"
 image_name = "kdms-main"
 # Optional: pin with sha256:… ; leave empty to use branch-main (or set image_tag).
-image_digest = "sha256:973acee148b1afc4fa7f32b3c436f792d7298255032f13e8d95cf1d6720177c8"
+image_digest = "sha256:3c813ab2baa5d4d95d23dfc2e16ae591a835f07db6d8238f75cd8b175c1c6fd9"
 image_tag    = ""
 # rolling_image_tag = "branch-main"  # when digest and image_tag are both empty
 
 api_image_name   = "kdms-api"
-api_image_digest = "sha256:ec17c2c6b429453819dfa2b19e111108c5ad2403273596a48a8dedef99d5af2f"
+api_image_digest = "sha256:3bb44c533bd84713035bc3d5a9ffdc769d5eb69b3f502dcfa5285603b49c8af2"
 api_image_tag    = ""
 
 runtime_sa_email  = "run-kdms@project-12f4b54b-d692-4583-83b.iam.gserviceaccount.com"
@@ -90,7 +90,7 @@ enable_reports_service = true
 reports_service_name = "kdms-reports-prod"
 reports_image_name   = "kdms-reports"
 reports_image_uri    = ""
-reports_image_digest = "sha256:741444c7ddde469b4766ef955605c76f52d80841547327b5bcbd00fe9d2d6763"
+reports_image_digest = "sha256:bbfbf18e22a16b0421021d95fbe00acd30f8c31baeb20ced8d285bff2be2a2f5"
 reports_image_tag    = ""
 # Placeholder — replace with actual URL after first deploy or from `gcloud run services describe`.
 reports_url = "https://kdms-reports-prod-684080887473.asia-south1.run.app"
@@ -110,7 +110,7 @@ enable_ocr_service = true
 ocr_service_name = "kdms-ocr-prod"
 ocr_image_name   = "kdms-ocr"
 ocr_image_uri    = ""
-ocr_image_digest = "sha256:6c27fba18e7b412d499f344b8aed4d77e35335c8920044a8bfcc3e8d5259cffe"
+ocr_image_digest = "sha256:b2543c72c863ba4aa448808cdf0023a2324015bf9fa193480096f69998fccab0"
 ocr_image_tag    = ""
 ocr_url          = "https://kdms-ocr-prod-684080887473.asia-south1.run.app"
 
@@ -130,7 +130,7 @@ enable_registration_service = true
 registration_service_name = "kdms-registration-prod"
 registration_image_name   = "kdms-registration"
 registration_image_uri    = ""
-registration_image_digest = "sha256:be26f92a76c62c26f3920eb7df561611f08f4c991265d5129e880579f5b7d06d"
+registration_image_digest = "sha256:fbfbd16421dae935071041193fee04c860e6a1ae4fee90ae5e491586fafdd6e3"
 registration_image_tag    = ""
 # Set after first deploy (QR poster / validation):
 registration_url = "https://kdms-registration-prod-zeqw3ha4ya-el.a.run.app"
