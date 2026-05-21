@@ -29,6 +29,7 @@ api_image_name        = "kdms-api"
 api_image_digest      = ""
 api_image_tag         = ""
 runtime_sa_email      = "run-kdms@project-12f4b54b-d692-4583-83b.iam.gserviceaccount.com"
+# Staging (example). For production Stream C: mysql-kdms-prod / kdms_prod / kdms_user — see docs/stream-c-db-switchover.md
 cloudsql_instance     = "mysql-skm-prod"
 db_name               = "kdms"
 db_username           = "kdms"
@@ -72,8 +73,8 @@ reports_memory                 = "2Gi"
 reports_container_concurrency  = 40
 reports_allow_unauthenticated  = true
 
-enable_ocr_service         = true
-ocr_service_name           = "kdms-ocr-prod"
+enable_ocr_service         = false
+# ocr_url removed Phase 6/7 — KDMS_OCR_BASE_URL no longer set on Cloud Run
 ocr_image_uri              = ""
 ocr_image_digest           = ""
 ocr_image_tag              = ""
@@ -90,7 +91,8 @@ ocr_allow_unauthenticated  = true
 enable_registration_service         = false
 registration_service_name           = "kdms-registration-prod"
 registration_image_name             = "kdms-registration"
-registration_url                    = ""
+# Maps to KDMS_REGISTRATION_URL on kdms-api-prod (staffOcrExtract.php)
+registration_url                    = "https://kdms-registration-prod-zeqw3ha4ya-el.a.run.app"
 secret_registration_db_password     = "kdms-reg-db-password"
 secret_document_ai_processor_id     = "document-ai-processor-id"
 registration_db_username            = "kdms_reg"

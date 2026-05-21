@@ -40,9 +40,19 @@ api_image_digest = "sha256:b9895a99450d0ccd4051c01c33488fe5dc204324af7d155cebbad
 api_image_tag    = ""
 
 runtime_sa_email  = "run-kdms@project-12f4b54b-d692-4583-83b.iam.gserviceaccount.com"
+
+# --- Database (Cloud SQL) ---
+# CURRENT DEPLOY: staging instance (kdms-api-prod / kdms-prod point here today).
 cloudsql_instance = "mysql-skm-prod"
 db_name           = "kdms"
 db_username       = "kdms"
+
+# PRODUCTION (required before Stream C BLOB migration — switch both kdms-prod + kdms-api-prod):
+# cloudsql_instance        = "mysql-kdms-prod"
+# db_name                  = "kdms_prod"
+# db_username              = "kdms_user"
+# cloudsql_connection_name = "project-12f4b54b-d692-4583-83b:asia-south1:mysql-kdms-prod"
+# secret_db_password     = "kdms-db-password"   # Secret Manager: password for kdms_user on mysql-kdms-prod
 
 # UI service — interactive pages; moderate concurrency.
 min_instances         = 0
@@ -103,24 +113,10 @@ reports_container_concurrency = 40
 reports_allow_unauthenticated = true
 
 # -----------------------------------------------------------------------------
-# Optional: kdms-ocr Python service (enable after image exists)
+# kdms-ocr — DECOMMISSIONED Phase 6/7 (enable_ocr_service must stay false)
 # -----------------------------------------------------------------------------
 enable_ocr_service = false
-
-ocr_service_name = "kdms-ocr-prod"
-ocr_image_name   = "kdms-ocr"
-ocr_image_uri    = ""
-ocr_image_digest = "sha256:53fde22354076d84f63bf625da08bb4dcdc5fd81e433af8c3c9e60dafa72365c"
-ocr_image_tag    = ""
-ocr_url          = "https://kdms-ocr-prod-684080887473.asia-south1.run.app"
-
-ocr_min_instances         = 0
-ocr_max_instances         = 6
-ocr_cpu                   = "1"
-ocr_memory                = "2Gi"
-ocr_container_port        = 5001
-ocr_container_concurrency = 20
-ocr_allow_unauthenticated = true
+# ocr_url and KDMS_OCR_BASE_URL are no longer injected into Cloud Run env.
 
 # -----------------------------------------------------------------------------
 # kdms-registration (Phase 1.5) — enable after image in Artifact Registry + secrets
@@ -132,7 +128,8 @@ registration_image_name   = "kdms-registration"
 registration_image_uri    = ""
 registration_image_digest = "sha256:ec1bafda998fe0ced020d4eccacfe8dd7778dc9c753c591943865a8cfedba55c"
 registration_image_tag    = ""
-# Set after first deploy (QR poster / validation):
+# Public URL for kdms-registration-prod. Terraform sets KDMS_REGISTRATION_URL on kdms-api-prod
+# (used by api/staffOcrExtract.php — required for staff "Scan ID Card" on addDevoteeI).
 registration_url = "https://kdms-registration-prod-zeqw3ha4ya-el.a.run.app"
 
 registration_max_instances         = 10

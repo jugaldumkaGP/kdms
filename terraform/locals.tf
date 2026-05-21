@@ -57,9 +57,8 @@ locals {
   api_public_base = trimspace(var.api_url) != "" ? trimsuffix(trimspace(var.api_url), "/") : "${local.app_public_base}/api"
   # PHP endpoints (manageAdmin.php, …) live under /api/ on the API host. Use this for KMREPORTS_API_BASE_URL etc.
   api_dir_http_base = trimspace(var.api_url) != "" ? "${trimsuffix(trimspace(var.api_url), "/")}/api" : "${local.app_public_base}/api"
-  ocr_public_base   = trimspace(var.ocr_url) != "" ? trimsuffix(trimspace(var.ocr_url), "/") : ""
-
   # Plain env vars before APP_URL (secrets follow; APP_URL applied last in main.tf).
+  # KDMS_OCR_BASE_URL removed Phase 6/7 (kdms-ocr decommissioned; staff OCR via kdms-registration).
   env_vars_plain_prefix = {
     APP_ENV           = "production"
     APP_DEBUG         = "false"
@@ -70,7 +69,6 @@ locals {
     KDMS_EVENT_ID     = var.kdms_event_id
     WEBROOT_URL       = "${local.app_public_base}/"
     API_BASE_URL      = "${local.api_public_base}/"
-    KDMS_OCR_BASE_URL = local.ocr_public_base
     # Server-side curl (login/API) hits Apache on loopback — no /kdms prefix (production vhost is root DocRoot).
     KDMS_INTERNAL_ORIGIN = "http://127.0.0.1:${var.container_port}"
     # PDO expects KDMS_* vars (see api/config/database.php); Laravel-style DB_* are kept for Composer/tools.
@@ -95,7 +93,6 @@ locals {
     "KDMS_EVENT_ID",
     "WEBROOT_URL",
     "API_BASE_URL",
-    "KDMS_OCR_BASE_URL",
     "KDMS_INTERNAL_ORIGIN",
     "KDMS_DB_NAME",
     "KDMS_DB_USER",
