@@ -305,6 +305,7 @@ final class DeduplicationService
             }
 
             $this->applyIncomingToSurvivor($baseKey, $newData);
+            $this->consolidateSurvivorPhotoAndIdRows($baseKey);
             $this->writeMergeAudit($baseKey, $batchId, $tbmKeys, $mergeSource);
 
             if ($this->eventId !== '') {
@@ -362,9 +363,244 @@ final class DeduplicationService
                 continue;
             }
 
+            if ($table === 'devotee_photo') {
+                $this->repointDevoteePhotoRow($baseKey, $tbmKey);
+                continue;
+            }
+
+            if ($table === 'devotee_id') {
+                $this->repointDevoteeIdRow($baseKey, $tbmKey);
+                continue;
+            }
+
+            if ($table === 'devotee_accomodation') {
+                $this->repointDevoteeAccommodationRows($baseKey, $tbmKey);
+                continue;
+            }
+
             $sql = "UPDATE {$table} SET {$col} = :base WHERE {$col} = :tbm";
             $stmt = $this->db->prepare($sql);
             $stmt->execute(['base' => $baseKey, 'tbm' => $tbmKey]);
+        }
+    }
+
+    /**
+     * devotee_photo has INDEX but not UNIQUE on Devotee_Key — blind UPDATE creates duplicate survivor rows.
+     */
+    private function repointDevoteePhotoRow(string $baseKey, string $tbmKey): void
+    {
+        $stmt = $this->db->prepare(
+            'SELECT Devotee_Key, Devotee_Photo_Gcs_Path, Devotee_Photo
+             FROM devotee_photo WHERE Devotee_Key IN (:base, :tbm)'
+        );
+        $stmt->execute(['base' => $baseKey, 'tbm' => $tbmKey]);
+        $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $survivor = null;
+        $tbm = null;
+        foreach ($rows as $row) {
+            if (strcasecmp((string) $row['Devotee_Key'], $baseKey) === 0) {
+                $survivor = $row;
+            } else {
+                $tbm = $row;
+            }
+        }
+        if ($tbm === null) {
+            return;
+        }
+        if ($survivor === null) {
+            $upd = $this->db->prepare('UPDATE devotee_photo SET Devotee_Key = :base WHERE Devotee_Key = :tbm');
+            $upd->execute(['base' => $baseKey, 'tbm' => $tbmKey]);
+
+            return;
+        }
+
+        $gcs = trim((string) ($tbm['Devotee_Photo_Gcs_Path'] ?? ''));
+        if ($gcs === '') {
+            $gcs = trim((string) ($survivor['Devotee_Photo_Gcs_Path'] ?? ''));
+        }
+        $blob = $survivor['Devotee_Photo'] ?? null;
+        if ($blob === null || (is_string($blob) && $blob === '')) {
+            $blob = $tbm['Devotee_Photo'] ?? null;
+        }
+
+        $upd = $this->db->prepare(
+            'UPDATE devotee_photo SET Devotee_Photo_Gcs_Path = :gcs, Devotee_Photo = :blob WHERE Devotee_Key = :base LIMIT 1'
+        );
+        $upd->execute([
+            'base' => $baseKey,
+            'gcs' => $gcs !== '' ? $gcs : null,
+            'blob' => $blob,
+        ]);
+        $del = $this->db->prepare('DELETE FROM devotee_photo WHERE Devotee_Key = :tbm');
+        $del->execute(['tbm' => $tbmKey]);
+    }
+
+    private function repointDevoteeIdRow(string $baseKey, string $tbmKey): void
+    {
+        $stmt = $this->db->prepare(
+            'SELECT Devotee_Key, Devotee_ID_Type, Devotee_ID_Image_Gcs_Path, Devotee_ID_Image
+             FROM devotee_id WHERE Devotee_Key IN (:base, :tbm)'
+        );
+        $stmt->execute(['base' => $baseKey, 'tbm' => $tbmKey]);
+        $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $survivor = null;
+        $tbm = null;
+        foreach ($rows as $row) {
+            if (strcasecmp((string) $row['Devotee_Key'], $baseKey) === 0) {
+                $survivor = $row;
+            } else {
+                $tbm = $row;
+            }
+        }
+        if ($tbm === null) {
+            return;
+        }
+        if ($survivor === null) {
+            $upd = $this->db->prepare('UPDATE devotee_id SET Devotee_Key = :base WHERE Devotee_Key = :tbm');
+            $upd->execute(['base' => $baseKey, 'tbm' => $tbmKey]);
+
+            return;
+        }
+
+        $gcs = trim((string) ($tbm['Devotee_ID_Image_Gcs_Path'] ?? ''));
+        if ($gcs === '') {
+            $gcs = trim((string) ($survivor['Devotee_ID_Image_Gcs_Path'] ?? ''));
+        }
+        $idType = trim((string) ($tbm['Devotee_ID_Type'] ?? ''));
+        if ($idType === '') {
+            $idType = trim((string) ($survivor['Devotee_ID_Type'] ?? ''));
+        }
+        $blob = $survivor['Devotee_ID_Image'] ?? null;
+        if ($blob === null || (is_string($blob) && $blob === '')) {
+            $blob = $tbm['Devotee_ID_Image'] ?? null;
+        }
+
+        $upd = $this->db->prepare(
+            'UPDATE devotee_id SET
+                Devotee_ID_Type = :type,
+                Devotee_ID_Image_Gcs_Path = :gcs,
+                Devotee_ID_Image = :blob
+             WHERE Devotee_Key = :base LIMIT 1'
+        );
+        $upd->execute([
+            'base' => $baseKey,
+            'type' => $idType !== '' ? $idType : null,
+            'gcs' => $gcs !== '' ? $gcs : null,
+            'blob' => $blob,
+        ]);
+        $del = $this->db->prepare('DELETE FROM devotee_id WHERE Devotee_Key = :tbm');
+        $del->execute(['tbm' => $tbmKey]);
+    }
+
+    /**
+     * If survivor already has Allocated row for an event, drop TBM row instead of repointing (duplicate key).
+     */
+    private function repointDevoteeAccommodationRows(string $baseKey, string $tbmKey): void
+    {
+        $stmt = $this->db->prepare(
+            "SELECT Accommodation_Event, Accomodation_Key
+             FROM devotee_accomodation
+             WHERE Devotee_Key = :tbm AND Accomodation_Status = 'Allocated'"
+        );
+        $stmt->execute(['tbm' => $tbmKey]);
+        $tbmRows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        if ($tbmRows === []) {
+            return;
+        }
+
+        $has = $this->db->prepare(
+            "SELECT 1 FROM devotee_accomodation
+             WHERE Devotee_Key = :base AND Accommodation_Event = :event AND Accomodation_Status = 'Allocated'
+             LIMIT 1"
+        );
+        $repoint = $this->db->prepare(
+            'UPDATE devotee_accomodation SET Devotee_Key = :base WHERE Devotee_Key = :tbm AND Accommodation_Event = :event AND Accomodation_Status = \'Allocated\''
+        );
+        $depart = $this->db->prepare(
+            "UPDATE devotee_accomodation SET Accomodation_Status = 'Departed',
+                Devotee_Accomodation_Update_Date_Time = NOW(), Devotee_Accomodation_Updated_By = :by
+             WHERE Devotee_Key = :tbm AND Accommodation_Event = :event AND Accomodation_Status = 'Allocated'"
+        );
+
+        foreach ($tbmRows as $row) {
+            $event = (string) ($row['Accommodation_Event'] ?? '');
+            if ($event === '') {
+                continue;
+            }
+            $has->execute(['base' => $baseKey, 'event' => $event]);
+            if ($has->fetchColumn()) {
+                $depart->execute(['tbm' => $tbmKey, 'event' => $event, 'by' => $this->updatedBy]);
+            } else {
+                $repoint->execute(['base' => $baseKey, 'tbm' => $tbmKey, 'event' => $event]);
+            }
+        }
+    }
+
+    /**
+     * Repair duplicate devotee_photo / devotee_id rows for one Devotee_Key (CLI / one-time ops).
+     */
+    public function repairDuplicatePhotoAndIdRows(string $devoteeKey): void
+    {
+        $this->consolidateSurvivorPhotoAndIdRows(strtoupper(trim($devoteeKey)));
+    }
+
+    /**
+     * Repair legacy duplicate devotee_photo / devotee_id rows for one survivor key after merge.
+     */
+    private function consolidateSurvivorPhotoAndIdRows(string $baseKey): void
+    {
+        $photoStmt = $this->db->prepare('SELECT Devotee_Photo_Gcs_Path, Devotee_Photo FROM devotee_photo WHERE Devotee_Key = :k');
+        $photoStmt->execute(['k' => $baseKey]);
+        $photoRows = $photoStmt->fetchAll(PDO::FETCH_ASSOC);
+        if (count($photoRows) > 1) {
+            $gcs = '';
+            $blob = null;
+            foreach ($photoRows as $row) {
+                if ($gcs === '' && trim((string) ($row['Devotee_Photo_Gcs_Path'] ?? '')) !== '') {
+                    $gcs = trim((string) $row['Devotee_Photo_Gcs_Path']);
+                }
+                if (($blob === null || $blob === '') && !empty($row['Devotee_Photo'])) {
+                    $blob = $row['Devotee_Photo'];
+                }
+            }
+            $this->db->prepare('DELETE FROM devotee_photo WHERE Devotee_Key = :k')->execute(['k' => $baseKey]);
+            $ins = $this->db->prepare(
+                'INSERT INTO devotee_photo (Devotee_Key, Devotee_Photo_Gcs_Path, Devotee_Photo) VALUES (:k, :gcs, :blob)'
+            );
+            $ins->execute(['k' => $baseKey, 'gcs' => $gcs !== '' ? $gcs : null, 'blob' => $blob]);
+        }
+
+        $idStmt = $this->db->prepare(
+            'SELECT Devotee_ID_Type, Devotee_ID_Image_Gcs_Path, Devotee_ID_Image FROM devotee_id WHERE Devotee_Key = :k'
+        );
+        $idStmt->execute(['k' => $baseKey]);
+        $idRows = $idStmt->fetchAll(PDO::FETCH_ASSOC);
+        if (count($idRows) > 1) {
+            $gcs = '';
+            $type = '';
+            $blob = null;
+            foreach ($idRows as $row) {
+                if ($gcs === '' && trim((string) ($row['Devotee_ID_Image_Gcs_Path'] ?? '')) !== '') {
+                    $gcs = trim((string) $row['Devotee_ID_Image_Gcs_Path']);
+                }
+                if ($type === '' && trim((string) ($row['Devotee_ID_Type'] ?? '')) !== '') {
+                    $type = trim((string) $row['Devotee_ID_Type']);
+                }
+                if (($blob === null || $blob === '') && !empty($row['Devotee_ID_Image'])) {
+                    $blob = $row['Devotee_ID_Image'];
+                }
+            }
+            $this->db->prepare('DELETE FROM devotee_id WHERE Devotee_Key = :k')->execute(['k' => $baseKey]);
+            $ins = $this->db->prepare(
+                'INSERT INTO devotee_id (Devotee_Key, Devotee_ID_Type, Devotee_ID_Image_Gcs_Path, Devotee_ID_Image)
+                 VALUES (:k, :type, :gcs, :blob)'
+            );
+            $ins->execute([
+                'k' => $baseKey,
+                'type' => $type !== '' ? $type : null,
+                'gcs' => $gcs !== '' ? $gcs : null,
+                'blob' => $blob,
+            ]);
         }
     }
 

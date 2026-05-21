@@ -97,34 +97,35 @@ final class PhotoStorage
     }
 
     /**
-     * Base64 for legacy JSON/UI consumers (search grid, card print PCD).
-     * Uses query BLOB when present; otherwise dual-read from devotee_photo row.
+     * Base64 for legacy JSON/UI consumers (search grid, card print PCD, addDevoteeI).
+     * Always resolves from devotee_photo row (GCS path preferred over stale JOIN BLOB).
      */
     public static function legacyBase64Photo(PDO $db, string $devoteeKey, mixed $blobFromQuery): string
     {
-        $blob = self::normalizeBlobValue($blobFromQuery);
-        if ($blob !== '') {
-            return base64_encode($blob);
+        $read = self::readDevoteePhoto($db, $devoteeKey);
+        if ($read !== null) {
+            return base64_encode($read['bytes']);
         }
 
-        $read = self::readDevoteePhoto($db, $devoteeKey);
+        $blob = self::normalizeBlobValue($blobFromQuery);
 
-        return $read !== null ? base64_encode($read['bytes']) : '';
+        return $blob !== '' ? base64_encode($blob) : '';
     }
 
     /**
-     * Base64 for legacy JSON/UI consumers (search grid).
+     * Base64 for legacy JSON/UI consumers (search grid, addDevoteeI).
+     * GCS path preferred over stale JOIN BLOB.
      */
     public static function legacyBase64IdImage(PDO $db, string $devoteeKey, mixed $blobFromQuery): string
     {
-        $blob = self::normalizeBlobValue($blobFromQuery);
-        if ($blob !== '') {
-            return base64_encode($blob);
+        $read = self::readDevoteeIdImage($db, $devoteeKey);
+        if ($read !== null) {
+            return base64_encode($read['bytes']);
         }
 
-        $read = self::readDevoteeIdImage($db, $devoteeKey);
+        $blob = self::normalizeBlobValue($blobFromQuery);
 
-        return $read !== null ? base64_encode($read['bytes']) : '';
+        return $blob !== '' ? base64_encode($blob) : '';
     }
 
     private static function normalizeBlobValue(mixed $blob): string

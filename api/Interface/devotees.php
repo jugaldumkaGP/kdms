@@ -129,8 +129,9 @@ Class Devotee {
         $DevoteeDetails = array();
         
         if(!empty($row = $results->fetchObject())){
-            $row->{'Devotee_Photo'} = base64_encode($row->{'Devotee_Photo'});
-            $row->{'Devotee_ID_Image'} = base64_encode($row->{'Devotee_ID_Image'});
+            $key = (string) ($row->Devotee_Key ?? $devotee_key);
+            $row->{'Devotee_Photo'} = PhotoStorage::legacyBase64Photo($this->conn, $key, $row->{'Devotee_Photo'});
+            $row->{'Devotee_ID_Image'} = PhotoStorage::legacyBase64IdImage($this->conn, $key, $row->{'Devotee_ID_Image'});
             $DevoteeDetails=$row;
         }
         else{
@@ -181,9 +182,7 @@ Class Devotee {
                     " devotee d ".
                     " left outer join devotee_id did on d.Devotee_Key=did.Devotee_Key " .
                     " left outer join devotee_photo dp on d.Devotee_Key=dp.Devotee_Key " .
-                    " left outer join devotee_accomodation da on d.Devotee_Key=da.Devotee_key  " .
-                        " AND da.Accommodation_Event = '" . $eventId . "' AND da.Accomodation_Status = 'Allocated' " .
-                    " left outer join accommodation_master am on da.accomodation_key=am.accomodation_key  " ;
+                    $this->searchAccommodationJoinSql($eventId);
                     // " left outer join Devotee_Demographics dd on d.devotee_key = dd.devotee_key";
                 
         switch ($requestData){
@@ -249,9 +248,14 @@ Class Devotee {
         $results = $this->conn->query($query);
         
         $devoteeSearchResult = array();
+        $seenKeys = [];
         $i = 0;
         while($row = $results->fetchObject()){
             $devoteeKey = (string) ($row->devotee_key ?? '');
+            if ($devoteeKey === '' || isset($seenKeys[$devoteeKey])) {
+                continue;
+            }
+            $seenKeys[$devoteeKey] = true;
             $row->{'Devotee_Photo'} = PhotoStorage::legacyBase64Photo($this->conn, $devoteeKey, $row->{'Devotee_Photo'});
             $row->{'Devotee_ID_Image'} = PhotoStorage::legacyBase64IdImage($this->conn, $devoteeKey, $row->{'Devotee_ID_Image'});
             $devoteeSearchResult[] = $row;
@@ -265,6 +269,29 @@ Class Devotee {
         }
         
         return $devoteeSearchResult;
+    }
+
+    /**
+     * One allocated accommodation row per devotee per event (avoids duplicate search rows after merge/repoint).
+     */
+    private function searchAccommodationJoinSql(string $eventId): string
+    {
+        $qEvent = $this->conn->quote($eventId);
+
+        return " left outer join (
+                    SELECT da_inner.*
+                    FROM devotee_accomodation da_inner
+                    INNER JOIN (
+                        SELECT Devotee_Key, MAX(Devotee_Accomodation_Update_Date_Time) AS max_upd
+                        FROM devotee_accomodation
+                        WHERE Accommodation_Event = {$qEvent} AND Accomodation_Status = 'Allocated'
+                        GROUP BY Devotee_Key
+                    ) da_pick ON da_inner.Devotee_Key = da_pick.Devotee_Key
+                        AND da_inner.Devotee_Accomodation_Update_Date_Time = da_pick.max_upd
+                    WHERE da_inner.Accommodation_Event = {$qEvent}
+                        AND da_inner.Accomodation_Status = 'Allocated'
+                ) da ON d.Devotee_Key = da.Devotee_Key
+                left outer join accommodation_master am on da.accomodation_key = am.accomodation_key ";
     }
     
     private function iSearchDevotee($requestData){
@@ -439,6 +466,13 @@ Class Devotee {
                         $searchClause = $searchClause . "(d.devotee_remarks like '%" . str_replace(' ', '+', $subValue) . "%' OR d.devotee_remarks like '%" . $subValue . "%') AND ";
                         break;                    
                     
+                    // Devotee key
+                    case "devotee_key" :
+                    case "Devotee_Key" :
+                    case "Devotee Key" :
+                        $searchClause = $searchClause . "(d.devotee_key = '" . str_replace(' ', '+', $subValue) . "' OR d.devotee_key = '" . $subValue . "') AND ";
+                        break;
+
                     // ID Number
                     case "devotee_id_number" :
                     case "Devotee_ID_Number" :
