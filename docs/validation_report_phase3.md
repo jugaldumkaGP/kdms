@@ -74,10 +74,15 @@ Dashboard, Registration, and Register New Devotee remain visible in nav; page AC
 
 ---
 
-## 7. Staging checklist
+## 7. Deploy and validation
+
+Full operator steps: **`docs/phase2-phase3-deploy-and-validation.md`**
+
+Quick checklist:
 
 - [ ] Run `scripts/mysql_grant_kdms_page_ids.sql` STEP 1–2 on prod if needed; grant `KD-KITCHEN` to kitchen roles
-- [ ] Staff with `KD-DVT-SCR`: TMP → print → returns to TMP; kitchen count +1 after print (with `eventId` on removeFromPrintQueue)
+- [ ] Deploy `kdms-prod` + `kdms-api-prod` (+ `kdms-registration-prod` if Phase 2 PWA included)
+- [ ] Staff with `KD-DVT-SCR`: TMP → print → returns to TMP; kitchen day-visitor count +1; allocated count unchanged for that devotee
 - [ ] GCS photo in search grid and on printed day-visitor card
 - [ ] User without `KD-KITCHEN`: nav hidden; direct URL → access denied
 - [ ] User with `KD-KITCHEN` only: kitchen works; print queues hidden unless also granted `KD-DVT-SCR`
