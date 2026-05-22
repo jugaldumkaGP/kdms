@@ -79,10 +79,12 @@ final class DeduplicationService
             }
         }
 
-        // Legacy rows may have NULL Devotee_ID_Unique_Key (pre-migration type/number) while numbers still match.
-        if ($idNumber !== '') {
+        // Legacy Aadhaar rows may have NULL Devotee_ID_Unique_Key while digits still match.
+        // Skip when staff explicitly chose another ID type (e.g. DL) to avoid spurious same-ID hits.
+        $aadhaarType = in_array(strtoupper($idType), ['AADHAAR', 'AADHAR'], true);
+        if ($aadhaarType && $idNumber !== '') {
             $digitsOnly = preg_replace('/\D+/', '', $idNumber) ?? '';
-            if (strlen($digitsOnly) >= 4) {
+            if (strlen($digitsOnly) === 12) {
                 $stmt = $this->db->prepare(
                     'SELECT Devotee_Key, Devotee_First_Name, Devotee_Last_Name, Devotee_DOB,
                             Devotee_Cell_Phone_Number, Devotee_Station, Devotee_ID_Type, Devotee_ID_Number,

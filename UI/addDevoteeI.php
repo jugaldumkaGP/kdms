@@ -266,6 +266,20 @@ $is_key_available = false;
             color: #e65100;
             margin-bottom: 6px;
         }
+        /* Keep grid width stable — do not toggle display:none on the column (causes full-page flash). */
+        #dedup-hints-col.dedup-hints-col--collapsed {
+            visibility: hidden;
+            opacity: 0;
+            pointer-events: none;
+        }
+        #dedup-hints-col.dedup-hints-col--collapsed .card {
+            max-height: 0;
+            overflow: hidden;
+            margin: 0;
+            padding: 0;
+            border: none;
+            box-shadow: none;
+        }
     </style>
     <script>
         var directoryName = <?= json_encode($directoryName, JSON_HEX_TAG | JSON_HEX_APOS) ?>;
@@ -747,7 +761,7 @@ $is_key_available = false;
                                 </div>
                             </div>
                             <?php if ($devotee_key !== '') { ?>
-                            <div class="col-md-4" id="dedup-hints-col" style="display:none;">
+                            <div class="col-md-4 dedup-hints-col--collapsed" id="dedup-hints-col" aria-hidden="true">
                                 <div class="card" id="dedup-hints-card">
                                     <div class="card-header card-header-primary">
                                         <h4 class="card-title">Possible duplicates</h4>
@@ -786,27 +800,36 @@ $is_key_available = false;
   const selected = new Set();
   const form = document.getElementById('myForm');
   let dedupTimer = null;
+  let dedupFetchId = 0;
+  let dedupAbort = null;
+  let lastDedupQueryKey = '';
 
   if (!col || !loading || !list || !mergeBtn) {
     return;
   }
 
   function hideDedupSection() {
-    col.style.display = 'none';
+    col.classList.add('dedup-hints-col--collapsed');
+    col.setAttribute('aria-hidden', 'true');
     list.innerHTML = '';
     list.style.display = 'none';
     mergeBtn.style.display = 'none';
+    loading.style.display = 'none';
     selected.clear();
+  }
+
+  function showDedupSection() {
+    col.classList.remove('dedup-hints-col--collapsed');
+    col.removeAttribute('aria-hidden');
   }
 
   function normalizeIdForDedup(type, number) {
     type = (type || '').trim();
     number = (number || '').trim();
     var digits = number.replace(/\D+/g, '');
-    if (!type || type === 'none' || type.indexOf('Not Selected') >= 0) {
-      if (digits.length === 12) {
-        type = 'Aadhaar';
-      }
+    var typeUnset = !type || type === 'none' || type.indexOf('Not Selected') >= 0;
+    if (typeUnset && digits.length === 12) {
+      type = 'Aadhaar';
     }
     if (type === 'Aadhaar') {
       number = digits;
@@ -862,12 +885,32 @@ $is_key_available = false;
   }
 
   function refreshDedupHints() {
+    if (window.kdmsSuppressDedupRefresh) {
+      return;
+    }
+    const params = formDedupParams();
+    const queryKey = params.toString();
+    if (queryKey === lastDedupQueryKey) {
+      return;
+    }
+    lastDedupQueryKey = queryKey;
+
+    if (dedupAbort) {
+      dedupAbort.abort();
+    }
+    dedupAbort = new AbortController();
+    const fetchId = ++dedupFetchId;
+
     loading.style.display = 'block';
     loading.textContent = 'Checking for duplicates…';
-    const params = formDedupParams();
-    fetch(checkUrl + '?' + params.toString(), { credentials: 'same-origin' })
+    list.style.display = 'none';
+
+    fetch(checkUrl + '?' + queryKey, { credentials: 'same-origin', signal: dedupAbort.signal })
       .then(function (r) { return r.json(); })
       .then(function (data) {
+        if (fetchId !== dedupFetchId) {
+          return;
+        }
         loading.style.display = 'none';
         if (!data || data.status !== true) {
           hideDedupSection();
@@ -880,33 +923,47 @@ $is_key_available = false;
           hideDedupSection();
           return;
         }
-        col.style.display = '';
+        showDedupSection();
         list.style.display = 'block';
-        renderMatches(matches);
+        renderMatches(matches.slice(0, 25));
       })
-      .catch(function () {
+      .catch(function (err) {
+        if (err && err.name === 'AbortError') {
+          return;
+        }
+        if (fetchId !== dedupFetchId) {
+          return;
+        }
         hideDedupSection();
       });
   }
 
   function scheduleDedupCheck() {
+    if (window.kdmsSuppressDedupRefresh) {
+      return;
+    }
+    lastDedupQueryKey = '';
     if (dedupTimer) {
       clearTimeout(dedupTimer);
     }
-    dedupTimer = setTimeout(refreshDedupHints, 400);
+    dedupTimer = setTimeout(refreshDedupHints, 450);
   }
 
-  window.kdmsRefreshDedupHints = refreshDedupHints;
+  window.kdmsRefreshDedupHints = scheduleDedupCheck;
   refreshDedupHints();
   if (form) {
-    ['devotee_id_number', 'devotee_id_type', 'devotee_first_name', 'devotee_last_name',
+    ['devotee_id_number', 'devotee_first_name', 'devotee_last_name',
       'devotee_dob', 'devotee_cell_phone_number', 'devotee_station'].forEach(function (id) {
       const el = document.getElementById(id);
       if (el) {
+        el.addEventListener('input', scheduleDedupCheck);
         el.addEventListener('change', scheduleDedupCheck);
-        el.addEventListener('blur', scheduleDedupCheck);
       }
     });
+    const idTypeEl = document.getElementById('devotee_id_type');
+    if (idTypeEl) {
+      idTypeEl.addEventListener('change', scheduleDedupCheck);
+    }
   }
 
   mergeBtn.addEventListener('click', function () {

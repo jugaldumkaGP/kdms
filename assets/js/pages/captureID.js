@@ -109,12 +109,22 @@
         if (digits.length !== 12) {
             return;
         }
-        if (typeEl && (!typeEl.value || typeEl.value === 'none')) {
-            typeEl.value = 'Aadhaar';
-            markFieldFilled(typeEl);
+        var type = typeEl ? (typeEl.value || '').trim() : '';
+        var typeUnset = !type || type === 'none';
+        window.kdmsSuppressDedupRefresh = true;
+        try {
+            if (typeEl && typeUnset) {
+                typeEl.value = 'Aadhaar';
+                markFieldFilled(typeEl);
+                type = 'Aadhaar';
+            }
+            if (type === 'Aadhaar') {
+                numEl.value = formatAadhaarDisplay(digits);
+                markFieldFilled(numEl);
+            }
+        } finally {
+            window.kdmsSuppressDedupRefresh = false;
         }
-        numEl.value = formatAadhaarDisplay(digits);
-        markFieldFilled(numEl);
         if (typeof window.kdmsRefreshDedupHints === 'function') {
             window.kdmsRefreshDedupHints();
         }
