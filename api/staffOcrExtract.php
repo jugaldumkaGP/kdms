@@ -146,8 +146,7 @@ function staff_ocr_persist_id_gcs_path(string $devoteeKey, string $gcsPath): voi
             'INSERT INTO devotee_id (Devotee_Key, Devotee_ID_Image_Gcs_Path, Devotee_ID_Image, Devotee_ID_Type)
              VALUES (:key, :gcs, NULL, :type)
              ON DUPLICATE KEY UPDATE
-                Devotee_ID_Image_Gcs_Path = VALUES(Devotee_ID_Image_Gcs_Path),
-                Devotee_ID_Image = NULL'
+                Devotee_ID_Image_Gcs_Path = VALUES(Devotee_ID_Image_Gcs_Path)'
         );
         $stmt->execute([
             'key' => $devoteeKey,

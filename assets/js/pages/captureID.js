@@ -33,32 +33,90 @@
 
     const OCR_FIELDS = Object.keys(FIELD_MAP);
 
+    var pendingIdUpload = null;
+    var initialIdPreviewHtml = '';
+
+    function idUploadRequiresConfirm() {
+        return window.kdmsIdUploadRequireConfirm === true
+            || window.kdmsIdUploadRequireConfirm === 'true';
+    }
+
     function getManagePhotoUrl() {
         return (typeof window.kdmsManagePhotoUrl === 'string' && window.kdmsManagePhotoUrl !== '')
             ? window.kdmsManagePhotoUrl
             : '../api/managePhoto.php';
     }
 
-    function setIdUploadStatus(message, isError) {
+    function setIdUploadStatus(message) {
         var el = document.getElementById('id-upload-status');
-        if (!el) {
-            return;
+        if (el) {
+            el.textContent = message || '';
         }
-        el.className = (isError ? 'text-danger' : 'text-info') + ' small mt-3 text-center px-2';
-        el.textContent = message || 'Processing…';
     }
 
     function setIdUploadBusy(busy, statusText) {
         var input = document.getElementById('cameraIDFileInput');
-        var spinner = document.getElementById('id-upload-spinner');
+        var overlay = document.getElementById('id-upload-overlay');
         if (input) {
             input.disabled = !!busy;
         }
-        if (spinner) {
-            spinner.style.display = busy ? 'flex' : 'none';
+        if (!overlay) {
+            return;
         }
-        if (busy && statusText) {
-            setIdUploadStatus(statusText, false);
+        if (busy) {
+            overlay.classList.add('is-active');
+            overlay.setAttribute('aria-busy', 'true');
+            if (statusText) {
+                setIdUploadStatus(statusText);
+            }
+        } else {
+            overlay.classList.remove('is-active');
+            overlay.setAttribute('aria-busy', 'false');
+            setIdUploadStatus('');
+        }
+    }
+
+    /** Float Material labels after programmatic value set (OCR). */
+    function markFieldFilled(inputOrSelect) {
+        if (!inputOrSelect) {
+            return;
+        }
+        var group = inputOrSelect.closest('.form-group');
+        if (group) {
+            group.classList.add('is-filled');
+        }
+        try {
+            inputOrSelect.dispatchEvent(new Event('input', { bubbles: true }));
+            inputOrSelect.dispatchEvent(new Event('change', { bubbles: true }));
+        } catch (e) { /* IE legacy */ }
+    }
+
+    function formatAadhaarDisplay(raw) {
+        var digits = String(raw || '').replace(/\D+/g, '');
+        if (digits.length !== 12) {
+            return digits;
+        }
+        return digits.substr(0, 4) + ' ' + digits.substr(4, 4) + ' ' + digits.substr(8, 4);
+    }
+
+    function normalizeAadhaarFields() {
+        var typeEl = document.getElementById('devotee_id_type');
+        var numEl = document.getElementById('devotee_id_number');
+        if (!numEl || !numEl.value) {
+            return;
+        }
+        var digits = numEl.value.replace(/\D+/g, '');
+        if (digits.length !== 12) {
+            return;
+        }
+        if (typeEl && (!typeEl.value || typeEl.value === 'none')) {
+            typeEl.value = 'Aadhaar';
+            markFieldFilled(typeEl);
+        }
+        numEl.value = formatAadhaarDisplay(digits);
+        markFieldFilled(numEl);
+        if (typeof window.kdmsRefreshDedupHints === 'function') {
+            window.kdmsRefreshDedupHints();
         }
     }
 
@@ -84,10 +142,6 @@
         });
     }
 
-    /**
-     * Resize large camera-roll photos before upload/OCR (keeps under PHP post limits).
-     * @returns {Promise<{blob: Blob, previewUrl: string}>}
-     */
     function compressImageFile(file, maxDim, quality) {
         return new Promise(function (resolve, reject) {
             var reader = new FileReader();
@@ -210,10 +264,22 @@
                 return;
             }
         }
+        if (ocrName === 'Devotee_ID_Number') {
+            var digits = val.replace(/\D+/g, '');
+            if (digits.length === 12) {
+                var typeEl = document.getElementById('devotee_id_type');
+                if (typeEl) {
+                    typeEl.value = 'Aadhaar';
+                    markFieldFilled(typeEl);
+                }
+                val = formatAadhaarDisplay(digits);
+            }
+        }
         input.value = val;
         if (TITLE_CASE_IDS.indexOf(elId) >= 0 && val) {
             input.value = toTitleCase(input.value.trim());
         }
+        markFieldFilled(input);
         setFieldConfidence(input, conf);
     }
 
@@ -221,22 +287,17 @@
         if (!data || typeof data !== 'object') {
             return false;
         }
-        var applied = false;
         OCR_FIELDS.forEach(function (name) {
-            var before = document.getElementById(FIELD_MAP[name]);
-            var beforeVal = before ? before.value : '';
             applyOcrField(name, data[name]);
-            if (before && before.value !== beforeVal) {
-                applied = true;
-            }
         });
-        return applied;
+        normalizeAadhaarFields();
+        return ocrResponseHasFields(data);
     }
 
     async function runStaffOcrPrefill(file) {
         var devoteeKey = resolveReservedKey().toUpperCase();
         if (!devoteeKey || !/^P[0-9A-Z]+$/.test(devoteeKey)) {
-            return false;
+            return 'failed';
         }
         var ocrUrl = (window.kdmsWebRoot || '/').replace(/\/?$/, '/') + 'Logic/staffOcrExtractProxy.php';
         var fd = new FormData();
@@ -253,8 +314,7 @@
                 signal: controller.signal
             });
             var data = await res.json().catch(function () { return {}; });
-            if (res.ok && ocrResponseHasFields(data)) {
-                applyStaffOcrResponse(data);
+            if (res.ok && applyStaffOcrResponse(data)) {
                 return 'filled';
             }
             if (res.ok) {
@@ -268,9 +328,51 @@
         return 'failed';
     }
 
-    function uploadIDImageMultipart(blob, previewUrl, ocrResult) {
+    function showIdUploadConfirmBar(previewUrl) {
+        var bar = document.getElementById('id-upload-confirm-bar');
+        var text = document.getElementById('id-upload-confirm-text');
+        var key = (typeof window.kdmsDevoteeKeyLabel === 'string' && window.kdmsDevoteeKeyLabel)
+            ? window.kdmsDevoteeKeyLabel
+            : resolveReservedKey();
+        if (text) {
+            var hasExisting = window.kdmsIdUploadHasExisting === true
+                || window.kdmsIdUploadHasExisting === 'true';
+            text.textContent = hasExisting
+                ? 'Preview only — nothing is saved until you confirm. This will REPLACE the current ID image for devotee '
+                    + key + '.'
+                : 'Preview only — nothing is saved until you confirm. This will attach this ID image to devotee '
+                    + key + '.';
+        }
+        if (bar) {
+            bar.classList.add('is-visible');
+        }
+        var previewContent = document.getElementById('photo-id-preview-content');
+        if (previewContent && previewUrl) {
+            previewContent.innerHTML =
+                '<img class="photo-id-preview" src="' + previewUrl + '" alt="ID preview (not saved yet)" height="400px" width="200px"></img>';
+        }
+    }
+
+    function hideIdUploadConfirmBar() {
+        var bar = document.getElementById('id-upload-confirm-bar');
+        if (bar) {
+            bar.classList.remove('is-visible');
+        }
+    }
+
+    function cancelPendingIdUpload() {
+        pendingIdUpload = null;
+        hideIdUploadConfirmBar();
+        var previewContent = document.getElementById('photo-id-preview-content');
+        if (previewContent && initialIdPreviewHtml) {
+            previewContent.innerHTML = initialIdPreviewHtml;
+        }
+    }
+
+    function uploadIDImageMultipart(blob, previewUrl, ocrResult, confirmed) {
         var devoteeID = resolveReservedKey();
         if (devoteeID === '') {
+            setIdUploadBusy(false);
             alert('Devotee ID is not reserved yet. Refresh the Add Devotee page and try again.');
             return;
         }
@@ -279,6 +381,9 @@
         fd.append('id_image', blob, 'id_image.jpg');
         fd.append('api_type', '4');
         fd.append('devotee_key', devoteeID);
+        if (confirmed) {
+            fd.append('confirm_replace', '1');
+        }
 
         $.ajax({
             url: getManagePhotoUrl(),
@@ -288,7 +393,6 @@
             contentType: false,
             timeout: UPLOAD_TIMEOUT_MS
         }).done(function (resp) {
-            setIdUploadBusy(false);
             var parsed = typeof resp === 'string' ? JSON.parse(resp) : resp;
             if (!parsed || parsed.status !== true) {
                 alert(parsed && parsed.message ? parsed.message : 'ID image upload failed.');
@@ -298,19 +402,21 @@
             if (ocrResult === 'filled') {
                 msg += ' Form fields were prefilled from the ID — please verify.';
             } else if (ocrResult === 'empty') {
-                msg += ' OCR did not return field data (registration service may be unavailable) — enter details manually.';
+                msg += ' OCR did not return field data — enter details manually.';
             }
             alert(msg);
             var previewContent = document.getElementById('photo-id-preview-content');
             if (previewContent) {
                 previewContent.innerHTML =
                     '<img class="photo-id-preview" src="' + previewUrl + '" alt="devotee ID" height="400px" width="200px"></img>';
+                initialIdPreviewHtml = previewContent.innerHTML;
             }
+            pendingIdUpload = null;
+            hideIdUploadConfirmBar();
             if (typeof window.kdmsRefreshDedupHints === 'function') {
                 window.kdmsRefreshDedupHints();
             }
         }).fail(function (xhr) {
-            setIdUploadBusy(false);
             var msg = 'ID image upload request failed.';
             if (xhr && xhr.responseText) {
                 try {
@@ -321,17 +427,41 @@
                 } catch (ignore) { /* use default */ }
             }
             alert(msg);
+        }).always(function () {
+            setIdUploadBusy(false);
         });
     }
 
-    document.getElementById('cameraIDFileInput').addEventListener('change', async function () {
-        var file = this.files && this.files[0];
-        this.value = '';
-        if (!file) {
+    async function commitPendingIdUpload() {
+        if (!pendingIdUpload) {
+            return;
+        }
+        var key = (typeof window.kdmsDevoteeKeyLabel === 'string' && window.kdmsDevoteeKeyLabel)
+            ? window.kdmsDevoteeKeyLabel
+            : resolveReservedKey();
+        var warn = 'Save this ID image to devotee ' + key + '?';
+        if (window.kdmsIdUploadHasExisting === true || window.kdmsIdUploadHasExisting === 'true') {
+            warn = 'Replace the ID image on devotee ' + key + '? The previous ID image will be overwritten.';
+        }
+        if (!window.confirm(warn)) {
             return;
         }
 
-        setIdUploadBusy(true, 'Preparing image…');
+        var payload = pendingIdUpload;
+        setIdUploadBusy(true, 'Scanning ID (OCR)…');
+        var ocrResult = 'failed';
+        try {
+            ocrResult = await runStaffOcrPrefill(payload.ocrFile);
+        } catch (e) {
+            ocrResult = 'failed';
+        }
+
+        setIdUploadBusy(true, 'Uploading ID image…');
+        uploadIDImageMultipart(payload.blob, payload.previewUrl, ocrResult, true);
+    }
+
+    async function handleIdFileSelected(file) {
+        setIdUploadBusy(true, 'Preparing preview…');
 
         var compressed;
         try {
@@ -347,6 +477,18 @@
             ocrFile = new File([compressed.blob], 'id_ocr.jpg', { type: 'image/jpeg' });
         }
 
+        setIdUploadBusy(false);
+
+        if (idUploadRequiresConfirm()) {
+            pendingIdUpload = {
+                blob: compressed.blob,
+                previewUrl: compressed.previewUrl,
+                ocrFile: ocrFile
+            };
+            showIdUploadConfirmBar(compressed.previewUrl);
+            return;
+        }
+
         setIdUploadBusy(true, 'Scanning ID (OCR)…');
         var ocrResult = 'failed';
         try {
@@ -356,8 +498,56 @@
         }
 
         setIdUploadBusy(true, 'Uploading ID image…');
-        uploadIDImageMultipart(compressed.blob, compressed.previewUrl, ocrResult);
+        uploadIDImageMultipart(compressed.blob, compressed.previewUrl, ocrResult, false);
+    }
+
+    var idInput = document.getElementById('cameraIDFileInput');
+    if (idInput) {
+        idInput.addEventListener('change', async function () {
+            var file = this.files && this.files[0];
+            this.value = '';
+            if (!file) {
+                return;
+            }
+            if (pendingIdUpload) {
+                if (!window.confirm('Discard the pending ID preview and choose another file?')) {
+                    return;
+                }
+                cancelPendingIdUpload();
+            }
+            await handleIdFileSelected(file);
+        });
+    }
+
+    var confirmBtn = document.getElementById('id-upload-confirm-btn');
+    var cancelBtn = document.getElementById('id-upload-cancel-btn');
+    if (confirmBtn) {
+        confirmBtn.addEventListener('click', function () {
+            commitPendingIdUpload();
+        });
+    }
+    if (cancelBtn) {
+        cancelBtn.addEventListener('click', function () {
+            cancelPendingIdUpload();
+        });
+    }
+
+    window.addEventListener('beforeunload', function (e) {
+        if (pendingIdUpload) {
+            e.preventDefault();
+            e.returnValue = 'You have an ID image preview that is not saved yet.';
+        }
     });
+
+    var idTypeEl = document.getElementById('devotee_id_type');
+    var idNumEl = document.getElementById('devotee_id_number');
+    if (idNumEl) {
+        idNumEl.addEventListener('blur', normalizeAadhaarFields);
+        idNumEl.addEventListener('change', normalizeAadhaarFields);
+    }
+    if (idTypeEl) {
+        idTypeEl.addEventListener('change', normalizeAadhaarFields);
+    }
 
     function uploadDevoteeImage(base64_image_data) {
         var devoteeID = resolveReservedKey();
@@ -400,4 +590,16 @@
             });
         });
     }
+
+    var previewContent = document.getElementById('photo-id-preview-content');
+    if (previewContent) {
+        initialIdPreviewHtml = previewContent.innerHTML;
+    }
+
+    // Existing page values (edit mode): ensure labels are floated on load.
+    document.querySelectorAll('#myForm .form-control').forEach(function (el) {
+        if (el.value && String(el.value).trim() !== '' && el.value !== 'none') {
+            markFieldFilled(el);
+        }
+    });
 })();

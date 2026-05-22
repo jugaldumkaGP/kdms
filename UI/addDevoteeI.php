@@ -206,6 +206,68 @@ $is_key_available = false;
         window.kdmsManagePhotoUrl = <?= json_encode($config_data['webroot'] . 'Logic/managePhotoProxy.php', JSON_HEX_TAG | JSON_HEX_APOS | JSON_UNESCAPED_SLASHES) ?>;
         window.kdmsDedupHintsUrl = <?= json_encode($config_data['webroot'] . 'Logic/dedupHintsProxy.php', JSON_HEX_TAG | JSON_HEX_APOS | JSON_UNESCAPED_SLASHES) ?>;
         window.kdmsDedupCheckUrl = <?= json_encode($config_data['webroot'] . 'Logic/dedupCheckProxy.php', JSON_HEX_TAG | JSON_HEX_APOS | JSON_UNESCAPED_SLASHES) ?>;
+        window.kdmsIdUploadRequireConfirm = <?= !empty($record_loaded) ? 'true' : 'false' ?>;
+        window.kdmsIdUploadHasExisting = <?= ($devotee_id_image !== '') ? 'true' : 'false' ?>;
+        window.kdmsDevoteeKeyLabel = <?= json_encode($devotee_key, JSON_HEX_TAG | JSON_HEX_APOS | JSON_UNESCAPED_UNICODE) ?>;
+    </script>
+    <style>
+        /* Material floating labels: programmatic OCR fill */
+        .form-group.is-filled .bmd-label-floating,
+        .form-group.is-focused .bmd-label-floating {
+            top: -1rem;
+            font-size: 0.6875rem;
+        }
+        #id-upload-overlay {
+            display: none;
+            position: absolute;
+            inset: 0;
+            z-index: 2;
+            background: rgba(255, 255, 255, 0.92);
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            border-radius: 6px;
+        }
+        #id-upload-overlay.is-active {
+            display: flex;
+        }
+        #id-upload-overlay .progress-ring {
+            width: 48px;
+            height: 48px;
+            border: 3px solid #e0e0e0;
+            border-top-color: #9c27b0;
+            border-radius: 50%;
+            animation: kdms-id-spin 0.9s linear infinite;
+        }
+        @keyframes kdms-id-spin {
+            to { transform: rotate(360deg); }
+        }
+        #id-upload-status {
+            color: #555;
+            font-size: 0.8125rem;
+            margin-top: 12px;
+            text-align: center;
+            padding: 0 12px;
+            max-width: 100%;
+        }
+        #id-upload-confirm-bar {
+            display: none;
+            margin-top: 8px;
+            padding: 12px 14px;
+            border-radius: 6px;
+            background: #fff3e0;
+            border: 1px solid #ffb74d;
+        }
+        #id-upload-confirm-bar.is-visible {
+            display: block;
+        }
+        #id-upload-confirm-bar .confirm-title {
+            font-weight: 600;
+            color: #e65100;
+            margin-bottom: 6px;
+        }
+    </style>
+    <script>
         var directoryName = <?= json_encode($directoryName, JSON_HEX_TAG | JSON_HEX_APOS) ?>;
         var dataSaved = false;
     </script>
@@ -648,9 +710,9 @@ $is_key_available = false;
                                 <div class="card card-profile">
                                     <label class="cameraFileInput" for="cameraIDFileInput">
                                         <div class="card-body" id="photo-id-preview_div" style="position:relative;min-height:200px;">
-                                            <div id="id-upload-spinner" style="display:none;position:absolute;inset:0;z-index:2;background:rgba(255,255,255,0.88);flex-direction:column;" class="d-flex align-items-center justify-content-center">
-                                                <div class="spinner-border text-primary" role="status" aria-hidden="true"></div>
-                                                <span id="id-upload-status" class="text-info small mt-3 text-center px-2" aria-live="polite">Processing…</span>
+                                            <div id="id-upload-overlay" aria-live="polite" aria-busy="false">
+                                                <div class="progress-ring" role="status" aria-hidden="true"></div>
+                                                <span id="id-upload-status"></span>
                                             </div>
                                             <div id="photo-id-preview-content">
                                             <?php
@@ -671,6 +733,16 @@ $is_key_available = false;
                                         />
                                         Click on above section to upload document ID.
                                     </label>
+                                    <div id="id-upload-confirm-bar" role="region" aria-label="Confirm ID image upload">
+                                        <div class="confirm-title">Confirm before saving</div>
+                                        <p id="id-upload-confirm-text" class="mb-2 small text-muted"></p>
+                                        <button type="button" class="btn btn-sm btn-primary" id="id-upload-confirm-btn">
+                                            Save ID to this devotee
+                                        </button>
+                                        <button type="button" class="btn btn-sm btn-outline-secondary ml-2" id="id-upload-cancel-btn">
+                                            Cancel
+                                        </button>
+                                    </div>
                                 </div>
                                 </div>
                             </div>
@@ -727,6 +799,21 @@ $is_key_available = false;
     selected.clear();
   }
 
+  function normalizeIdForDedup(type, number) {
+    type = (type || '').trim();
+    number = (number || '').trim();
+    var digits = number.replace(/\D+/g, '');
+    if (!type || type === 'none' || type.indexOf('Not Selected') >= 0) {
+      if (digits.length === 12) {
+        type = 'Aadhaar';
+      }
+    }
+    if (type === 'Aadhaar') {
+      number = digits;
+    }
+    return { type: type, number: number };
+  }
+
   function formDedupParams() {
     const params = new URLSearchParams();
     params.set('devotee_key', devoteeKey);
@@ -734,13 +821,21 @@ $is_key_available = false;
     if (!form) {
       return params;
     }
-    ['devotee_first_name', 'devotee_last_name', 'devotee_id_type', 'devotee_id_number',
-      'devotee_dob', 'devotee_cell_phone_number', 'devotee_station'].forEach(function (name) {
+    ['devotee_first_name', 'devotee_last_name', 'devotee_dob', 'devotee_cell_phone_number', 'devotee_station'].forEach(function (name) {
       const el = form.querySelector('[name="' + name + '"]');
       if (el && el.value) {
         params.set(name, el.value);
       }
     });
+    var idTypeEl = document.getElementById('devotee_id_type');
+    var idNumEl = document.getElementById('devotee_id_number');
+    var norm = normalizeIdForDedup(idTypeEl ? idTypeEl.value : '', idNumEl ? idNumEl.value : '');
+    if (norm.type) {
+      params.set('devotee_id_type', norm.type);
+    }
+    if (norm.number) {
+      params.set('devotee_id_number', norm.number);
+    }
     return params;
   }
 

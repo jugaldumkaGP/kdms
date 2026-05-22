@@ -36,6 +36,29 @@ function kdms_devotee_row_exists(PDO $db, string $devoteeKey): bool
     return (bool) $stmt->fetchColumn();
 }
 
+function kdms_devotee_has_stored_id_image(PDO $db, string $devoteeKey): bool
+{
+    $stmt = $db->prepare(
+        'SELECT 1 FROM devotee_id
+         WHERE Devotee_Key = :k
+           AND (
+                Devotee_ID_Image_Gcs_Path IS NOT NULL
+                OR (Devotee_ID_Image IS NOT NULL AND LENGTH(Devotee_ID_Image) > 64)
+           )
+         LIMIT 1'
+    );
+    $stmt->execute(['k' => strtoupper(trim($devoteeKey))]);
+
+    return (bool) $stmt->fetchColumn();
+}
+
+function kdms_id_upload_confirmed(array $requestData): bool
+{
+    $v = $requestData['confirm_replace'] ?? $requestData['id_upload_confirmed'] ?? '';
+
+    return in_array((string) $v, ['1', 'true', 'yes'], true);
+}
+
 // #3 Profile image upload
 if ($api_type === 3) {
     if (empty($requestData['devotee_key'])) {
@@ -58,6 +81,13 @@ if ($api_type === 3) {
     $devotee_key = strtoupper(trim((string) $requestData['devotee_key']));
     $rowExists = kdms_devotee_row_exists($db, $devotee_key);
     $stageOnly = !$rowExists;
+
+    if ($rowExists && !kdms_id_upload_confirmed($requestData)) {
+        res_error(
+            'ID image not saved: staff confirmation is required before replacing an existing devotee record. '
+            . 'Use the Confirm button on the Add Devotee screen.'
+        );
+    }
 
     $imageClass = new Image($db);
     $uploaded = false;

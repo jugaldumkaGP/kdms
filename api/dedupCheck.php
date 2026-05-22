@@ -24,8 +24,9 @@ $in = $_SERVER['REQUEST_METHOD'] === 'POST' ? $_POST : $_GET;
 $devoteeKey = strtoupper(trim((string) ($in['devotee_key'] ?? '')));
 $eventId = trim((string) ($in['eventId'] ?? getenv('KDMS_EVENT_ID') ?: ''));
 
-$idType = trim((string) ($in['devotee_id_type'] ?? $in['Devotee_ID_Type'] ?? ''));
-$idNumber = trim((string) ($in['devotee_id_number'] ?? $in['Devotee_ID_Number'] ?? ''));
+$rawIdType = trim((string) ($in['devotee_id_type'] ?? $in['Devotee_ID_Type'] ?? ''));
+$rawIdNumber = trim((string) ($in['devotee_id_number'] ?? $in['Devotee_ID_Number'] ?? ''));
+[$idType, $idNumber] = IdNormalizer::resolveForDedup($rawIdType, $rawIdNumber);
 $rawDob = trim((string) ($in['devotee_dob'] ?? $in['Devotee_DOB'] ?? ''));
 $normalizedDob = $rawDob !== '' ? (kdms_normalize_devotee_dob($rawDob) ?? $rawDob) : '';
 
@@ -34,7 +35,7 @@ $record = [
     'Devotee_First_Name' => trim((string) ($in['devotee_first_name'] ?? $in['Devotee_First_Name'] ?? '')),
     'Devotee_Last_Name' => trim((string) ($in['devotee_last_name'] ?? $in['Devotee_Last_Name'] ?? '')),
     'Devotee_ID_Type' => $idType,
-    'Devotee_ID_Number' => IdNormalizer::normalize($idType, $idNumber),
+    'Devotee_ID_Number' => $idNumber,
     'Devotee_Cell_Phone_Number' => trim((string) ($in['devotee_cell_phone_number'] ?? $in['Devotee_Cell_Phone_Number'] ?? '')),
     'Devotee_DOB' => ($normalizedDob === '' || $normalizedDob === '1900-01-01') ? '' : $normalizedDob,
     'Devotee_Station' => trim((string) ($in['devotee_station'] ?? $in['Devotee_Station'] ?? '')),

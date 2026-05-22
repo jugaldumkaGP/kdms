@@ -31,15 +31,15 @@ final class PhotoStorage
     public static function readDevoteePhoto(PDO $db, string $devoteeKey): ?array
     {
         $stmt = $db->prepare(
-            'SELECT Devotee_Photo_Gcs_Path, Devotee_Photo FROM devotee_photo WHERE Devotee_Key = :key LIMIT 1'
+            'SELECT Devotee_Photo_Gcs_Path, Devotee_Photo FROM devotee_photo WHERE Devotee_Key = :key'
         );
         $stmt->execute(['key' => $devoteeKey]);
-        $row = $stmt->fetch(PDO::FETCH_ASSOC);
-        if ($row === false) {
+        $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        if ($rows === []) {
             return null;
         }
 
-        return self::resolveRow($row, 'Devotee_Photo_Gcs_Path', 'Devotee_Photo');
+        return self::resolveBestChildRow($rows, 'Devotee_Photo_Gcs_Path', 'Devotee_Photo', self::objectPathForPhoto($devoteeKey));
     }
 
     /**
@@ -48,15 +48,15 @@ final class PhotoStorage
     public static function readDevoteeIdImage(PDO $db, string $devoteeKey): ?array
     {
         $stmt = $db->prepare(
-            'SELECT Devotee_ID_Image_Gcs_Path, Devotee_ID_Image FROM devotee_id WHERE Devotee_Key = :key LIMIT 1'
+            'SELECT Devotee_ID_Image_Gcs_Path, Devotee_ID_Image FROM devotee_id WHERE Devotee_Key = :key'
         );
         $stmt->execute(['key' => $devoteeKey]);
-        $row = $stmt->fetch(PDO::FETCH_ASSOC);
-        if ($row === false) {
+        $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        if ($rows === []) {
             return null;
         }
 
-        return self::resolveRow($row, 'Devotee_ID_Image_Gcs_Path', 'Devotee_ID_Image');
+        return self::resolveBestChildRow($rows, 'Devotee_ID_Image_Gcs_Path', 'Devotee_ID_Image', self::objectPathForIdImage($devoteeKey));
     }
 
     public static function objectPathForPhoto(string $devoteeKey): string
@@ -67,6 +67,63 @@ final class PhotoStorage
     public static function objectPathForIdImage(string $devoteeKey): string
     {
         return 'devotee/' . $devoteeKey . '/id.jpg';
+    }
+
+    /**
+     * When multiple devotee_id / devotee_photo rows exist per key (legacy merge repoint),
+     * pick the row most likely to represent the latest staff upload.
+     *
+     * @param list<array<string, mixed>> $rows
+     * @return array{bytes: string, source: string}|null
+     */
+    private static function resolveBestChildRow(
+        array $rows,
+        string $pathColumn,
+        string $blobColumn,
+        string $canonicalPath
+    ): ?array {
+        $canonicalPath = ltrim($canonicalPath, '/');
+        $best = null;
+        $bestScore = -1;
+
+        foreach ($rows as $row) {
+            $gcsPath = isset($row[$pathColumn]) ? trim((string) $row[$pathColumn]) : '';
+            $blobLen = 0;
+            if (!empty($row[$blobColumn])) {
+                $blob = $row[$blobColumn];
+                if (is_resource($blob)) {
+                    $blob = stream_get_contents($blob);
+                }
+                if (is_string($blob)) {
+                    $blobLen = strlen($blob);
+                }
+            }
+
+            $score = 0;
+            if ($gcsPath !== '') {
+                $score += 40;
+                if ($gcsPath === $canonicalPath) {
+                    $score += 60;
+                }
+            }
+            if ($blobLen > 64) {
+                $score += 30 + (int) min($blobLen / 4096, 40);
+            }
+            if ($gcsPath !== '' && $blobLen > 64) {
+                $score += 20;
+            }
+
+            if ($score > $bestScore) {
+                $bestScore = $score;
+                $best = $row;
+            }
+        }
+
+        if ($best === null) {
+            return null;
+        }
+
+        return self::resolveRow($best, $pathColumn, $blobColumn);
     }
 
     /**

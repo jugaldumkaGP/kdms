@@ -1433,6 +1433,14 @@ Class Devotee {
         $rowExists = DeduplicationService::devoteeRowExists($this->conn, $candidateKey);
         $dedupUserMessage = '';
 
+        [$saveIdType, $saveIdNumber] = IdNormalizer::resolveForDedup($Devotee_ID_Type, $Devotee_ID_Number);
+        if ($saveIdType !== '') {
+            $Devotee_ID_Type = $saveIdType;
+        }
+        if ($saveIdNumber !== '') {
+            $Devotee_ID_Number = $saveIdNumber;
+        }
+
         if (!$rowExists) {
 
             $dedupPayload = [
@@ -1440,7 +1448,7 @@ Class Devotee {
                 'Devotee_First_Name' => $Devotee_First_Name,
                 'Devotee_Last_Name' => $Devotee_Last_Name,
                 'Devotee_ID_Type' => $Devotee_ID_Type,
-                'Devotee_ID_Number' => IdNormalizer::normalize($Devotee_ID_Type, $Devotee_ID_Number),
+                'Devotee_ID_Number' => $Devotee_ID_Number,
                 'Devotee_Cell_Phone_Number' => $Devotee_Cell_Phone_Number,
                 'Devotee_DOB' => $Devotee_DOB === '1900-01-01' ? '' : $Devotee_DOB,
                 'Devotee_Station' => $Devotee_Station,
@@ -1455,9 +1463,8 @@ Class Devotee {
                 $unique_id = strtoupper((string) $dedup['devotee_key']);
 
                 if ($dedup['action'] === 'merged' && strcasecmp($unique_id, $candidateKey) !== 0) {
-                    DeduplicationService::repointStagedMediaKeys($this->conn, $unique_id, $candidateKey);
                     $dedupUserMessage = 'Duplicate detected: this record was merged into existing devotee '
-                        . $unique_id . ' (same ID number).';
+                        . $unique_id . ' (same ID number). Your ID scan was kept on the existing record.';
                 } elseif ($dedup['action'] === 'merged') {
                     $dedupUserMessage = 'Duplicate detected: saved as existing devotee ' . $unique_id . '.';
                 } elseif ($dedup['action'] === 'flagged_new') {
@@ -2050,13 +2057,16 @@ Class Devotee {
             //$id = 'KDHM' . rand(0, 9999) . substr(md5(rand()), 0, 7);
             //$id = 'P' . date('y') . date('m') . date('d') . rand(0, 9999) . substr(md5(rand()), 0, 7);
             $id = 'P' . date('y') . date('m') . date('d') . rand(0, 999) ;
-            $sql = "SELECT * FROM " . $this->table_name . " where devotee_key = '" . $id . "'";
+            $quoted = $this->conn->quote(strtoupper($id));
+            $sql = 'SELECT 1 FROM devotee WHERE Devotee_Key = ' . $quoted
+                . ' UNION SELECT 1 FROM devotee_id WHERE Devotee_Key = ' . $quoted
+                . ' UNION SELECT 1 FROM devotee_photo WHERE Devotee_Key = ' . $quoted
+                . ' LIMIT 1';
             $result = [];
             foreach ($this->conn->query($sql) as $row) {
-                //var_dump($row);
                 if (!empty($row)) {
-                   array_push($result, $row);
-              }
+                    $result[] = $row;
+                }
             }
         }
         return strtoupper($id);

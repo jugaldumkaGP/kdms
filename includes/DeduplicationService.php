@@ -60,8 +60,10 @@ final class DeduplicationService
         $bestKey = null;
         $reviewAliasKey = null;
 
-        $idType = trim((string) ($newRecord['Devotee_ID_Type'] ?? ''));
-        $idNumber = IdNormalizer::normalize($idType, (string) ($newRecord['Devotee_ID_Number'] ?? ''));
+        [$idType, $idNumber] = IdNormalizer::resolveForDedup(
+            trim((string) ($newRecord['Devotee_ID_Type'] ?? '')),
+            (string) ($newRecord['Devotee_ID_Number'] ?? '')
+        );
         $uniqueKey = IdNormalizer::uniqueKey($idType, $idNumber);
 
         if ($uniqueKey !== null) {
@@ -73,19 +75,24 @@ final class DeduplicationService
             );
             $stmt->execute(['uk' => $uniqueKey]);
             while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
-                $key = (string) $row['Devotee_Key'];
-                if ($candidateKey !== '' && strcasecmp($key, $candidateKey) === 0) {
-                    continue;
-                }
-                $matches[] = [
-                    'devotee_key' => $key,
-                    'score' => 100,
-                    'signal' => 1,
-                    'action' => 'merge',
-                ];
-                if (100 > $bestScore) {
-                    $bestScore = 100;
-                    $bestKey = $key;
+                $this->appendIdMatch($matches, $bestScore, $bestKey, $candidateKey, $row);
+            }
+        }
+
+        // Legacy rows may have NULL Devotee_ID_Unique_Key (pre-migration type/number) while numbers still match.
+        if ($idNumber !== '') {
+            $digitsOnly = preg_replace('/\D+/', '', $idNumber) ?? '';
+            if (strlen($digitsOnly) >= 4) {
+                $stmt = $this->db->prepare(
+                    'SELECT Devotee_Key, Devotee_First_Name, Devotee_Last_Name, Devotee_DOB,
+                            Devotee_Cell_Phone_Number, Devotee_Station, Devotee_ID_Type, Devotee_ID_Number,
+                            Devotee_Record_Update_Date_Time
+                     FROM devotee
+                     WHERE REPLACE(REPLACE(REPLACE(UPPER(Devotee_ID_Number), " ", ""), "-", ""), "+", "") = :digits'
+                );
+                $stmt->execute(['digits' => strtoupper($digitsOnly)]);
+                while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+                    $this->appendIdMatch($matches, $bestScore, $bestKey, $candidateKey, $row);
                 }
             }
         }
@@ -478,21 +485,24 @@ final class DeduplicationService
 
         $survivorGcs = trim((string) ($survivor['Devotee_ID_Image_Gcs_Path'] ?? ''));
         $tbmGcs = trim((string) ($tbm['Devotee_ID_Image_Gcs_Path'] ?? ''));
-        $gcs = $survivorGcs !== '' ? $survivorGcs : ($tbmGcs !== '' ? $tbmGcs : '');
+        // Prefer incoming (TBM) ID scan when staff just uploaded under a reserved key before merge.
+        $gcs = $tbmGcs !== '' ? $tbmGcs : ($survivorGcs !== '' ? $survivorGcs : '');
 
-        $idType = trim((string) ($survivor['Devotee_ID_Type'] ?? ''));
+        $idType = trim((string) ($tbm['Devotee_ID_Type'] ?? ''));
         if ($idType === '') {
-            $idType = trim((string) ($tbm['Devotee_ID_Type'] ?? ''));
+            $idType = trim((string) ($survivor['Devotee_ID_Type'] ?? ''));
         }
 
         $survivorBlob = $survivor['Devotee_ID_Image'] ?? null;
         $tbmBlob = $tbm['Devotee_ID_Image'] ?? null;
         if ($gcs !== '') {
             $blob = null;
+        } elseif ($tbmBlob !== null && (!is_string($tbmBlob) || $tbmBlob !== '')) {
+            $blob = $tbmBlob;
         } elseif ($survivorBlob !== null && (!is_string($survivorBlob) || $survivorBlob !== '')) {
             $blob = $survivorBlob;
         } else {
-            $blob = $tbmBlob;
+            $blob = null;
         }
 
         $upd = $this->db->prepare(
@@ -837,6 +847,36 @@ final class DeduplicationService
         $stmt->execute(['k' => strtoupper(trim($key))]);
 
         return (bool) $stmt->fetchColumn();
+    }
+
+    /**
+     * @param list<array{devotee_key: string, score: int, signal: int, action: string}> $matches
+     * @param array<string, mixed> $row
+     */
+    private function appendIdMatch(
+        array &$matches,
+        int &$bestScore,
+        ?string &$bestKey,
+        string $candidateKey,
+        array $row
+    ): void {
+        $key = (string) ($row['Devotee_Key'] ?? '');
+        if ($key === '' || ($candidateKey !== '' && strcasecmp($key, $candidateKey) === 0)) {
+            return;
+        }
+        if ($this->matchAlreadyListed($matches, $key)) {
+            return;
+        }
+        $matches[] = [
+            'devotee_key' => $key,
+            'score' => 100,
+            'signal' => 1,
+            'action' => 'merge',
+        ];
+        if (100 > $bestScore) {
+            $bestScore = 100;
+            $bestKey = $key;
+        }
     }
 
     /**

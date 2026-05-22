@@ -7,6 +7,48 @@ declare(strict_types=1);
  */
 final class IdNormalizer
 {
+    /**
+     * Resolve ID type/number for dedup and save (infer Aadhaar from 12 digits; strip spaces).
+     *
+     * @return array{0: string, 1: string} [idType, normalizedNumber]
+     */
+    public static function resolveForDedup(string $idType, string $idNumber): array
+    {
+        $type = trim($idType);
+        $raw = trim($idNumber);
+        $digitsOnly = preg_replace('/\D+/', '', $raw) ?? '';
+
+        if (
+            $type === ''
+            || strcasecmp($type, 'none') === 0
+            || stripos($type, 'not selected') !== false
+        ) {
+            if (strlen($digitsOnly) === 12) {
+                $type = 'Aadhaar';
+            }
+        }
+
+        if (strcasecmp($type, 'Aadhaar') === 0 || strcasecmp($type, 'Aadhar') === 0) {
+            $type = 'Aadhaar';
+            $raw = $digitsOnly;
+        }
+
+        return [$type, self::normalize($type, $raw)];
+    }
+
+    /**
+     * Display-friendly Aadhaar grouping (XXXX XXXX XXXX); storage should use normalize().
+     */
+    public static function formatAadhaarDisplay(string $digits): string
+    {
+        $digits = preg_replace('/\D+/', '', $digits) ?? '';
+        if (strlen($digits) !== 12) {
+            return trim($digits);
+        }
+
+        return substr($digits, 0, 4) . ' ' . substr($digits, 4, 4) . ' ' . substr($digits, 8, 4);
+    }
+
     public static function normalize(string $idType, string $idNumber): string
     {
         $type = trim($idType);
@@ -14,6 +56,7 @@ final class IdNormalizer
 
         switch ($type) {
             case 'Aadhaar':
+            case 'Aadhar':
                 $value = preg_replace('/[\s\-]+/', '', $value) ?? $value;
 
                 return $value;
