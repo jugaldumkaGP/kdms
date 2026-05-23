@@ -36,18 +36,6 @@
       <label>Last Name <span class="req">*</span>
         <input type="text" name="Devotee_Last_Name" required maxlength="50" autocomplete="family-name">
       </label>
-      <label>Gender (optional)
-        <select name="Devotee_Gender">
-          <option value="">—</option>
-          <option value="M">Male</option>
-          <option value="F">Female</option>
-        </select>
-      </label>
-      <label>Date of Birth (optional)
-        <input type="text" name="Devotee_DOB" id="dob-picker" class="dob-picker" inputmode="numeric"
-               placeholder="DD-MM-YYYY" maxlength="10" autocomplete="bday" aria-label="Date of birth (DD-MM-YYYY)">
-        <small class="hint">Format: DD-MM-YYYY (e.g. 05-10-1993)</small>
-      </label>
       <label>ID Type <span class="req">*</span>
         <select name="Devotee_ID_Type" required>
           <option value="">Select…</option>
@@ -62,6 +50,18 @@
       <label>ID Number <span class="req">*</span>
         <input type="text" name="Devotee_ID_Number" required maxlength="50" autocomplete="off">
         <small id="id-hint" class="hint"></small>
+      </label>
+      <label>Gender (optional)
+        <select name="Devotee_Gender">
+          <option value="">—</option>
+          <option value="M">Male</option>
+          <option value="F">Female</option>
+        </select>
+      </label>
+      <label>Date of Birth (optional)
+        <input type="text" name="Devotee_DOB" id="dob-picker" class="dob-picker" inputmode="numeric"
+               placeholder="DD-MM-YYYY" maxlength="10" autocomplete="bday" aria-label="Date of birth (DD-MM-YYYY)">
+        <small class="hint">Format: DD-MM-YYYY (e.g. 05-10-1993)</small>
       </label>
       <label>Phone (optional)
         <input type="tel" name="Devotee_Cell_Phone_Number" maxlength="15" autocomplete="tel">
