@@ -220,14 +220,23 @@
             return '';
         }
         if (/^\d{4}-\d{2}-\d{2}$/.test(val)) {
-            var p = val.split('-');
-            return p[2] + '-' + p[1] + '-' + p[0];
+            return val;
         }
         var m = val.match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{4})$/);
         if (m) {
-            return m[1].padStart(2, '0') + '-' + m[2].padStart(2, '0') + '-' + m[3];
+            var day = parseInt(m[1], 10);
+            var month = parseInt(m[2], 10);
+            var year = parseInt(m[3], 10);
+            var dt = new Date(Date.UTC(year, month - 1, day));
+            if (
+                dt.getUTCFullYear() === year &&
+                dt.getUTCMonth() === month - 1 &&
+                dt.getUTCDate() === day
+            ) {
+                return dt.toISOString().slice(0, 10);
+            }
         }
-        return val;
+        return '';
     }
 
     function setFieldConfidence(input, confidence) {

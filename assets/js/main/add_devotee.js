@@ -189,12 +189,8 @@ function validateInput() {
 
     var dobEl = document.getElementById("devotee_dob");
     if (dobEl && dobEl.value !== "") {
-        var normalizedDob = normalizeDateInput(dobEl.value);
-        if (normalizedDob) {
-            dobEl.value = normalizedDob;
-        }
-        if (!validateDate(normalizedDob || dobEl.value)) {
-            message = message + "Date of birth is invalid. Use yyyy-mm-dd or dd-mm-yyyy.\n";
+        if (!validateDate(dobEl.value)) {
+            message = message + "Date of birth is invalid.\n";
             response = false;
         }
     }

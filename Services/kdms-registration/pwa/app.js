@@ -131,18 +131,13 @@
     }
   }
 
-  function normalizeDobInput(raw) {
+  function dobToIso(raw) {
     raw = (raw || '').trim();
     if (!raw) return '';
-    if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) {
-      const p = raw.split('-');
-      return p[2] + '-' + p[1] + '-' + p[0];
-    }
+    if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) return raw;
     const dmy = raw.match(/^(\d{1,2})[-/](\d{1,2})[-/](\d{4})$/);
     if (dmy) {
-      const d = dmy[1].padStart(2, '0');
-      const m = dmy[2].padStart(2, '0');
-      return d + '-' + m + '-' + dmy[3];
+      return `${dmy[3]}-${dmy[2].padStart(2, '0')}-${dmy[1].padStart(2, '0')}`;
     }
     return raw;
   }
@@ -154,19 +149,11 @@
     let val = field.value;
     if (conf >= MED && val) {
       if (name === 'Devotee_DOB') {
-        val = normalizeDobInput(String(val));
+        val = dobToIso(String(val));
       }
       input.value = val;
       setFieldConfidence(input, conf);
     }
-  }
-
-  if (dobPicker) {
-    dobPicker.addEventListener('blur', () => {
-      if (dobPicker.value.trim()) {
-        dobPicker.value = normalizeDobInput(dobPicker.value);
-      }
-    });
   }
 
   TITLE_CASE_FIELDS.forEach((name) => {
@@ -266,7 +253,7 @@
       Devotee_First_Name: form.elements.Devotee_First_Name.value.trim(),
       Devotee_Last_Name: form.elements.Devotee_Last_Name.value.trim(),
       Devotee_Gender: form.elements.Devotee_Gender.value,
-      Devotee_DOB: normalizeDobInput((form.elements.Devotee_DOB.value || '').trim()),
+      Devotee_DOB: (form.elements.Devotee_DOB.value || '').trim(),
       Devotee_ID_Type: form.elements.Devotee_ID_Type.value,
       Devotee_ID_Number: form.elements.Devotee_ID_Number.value.trim(),
       Devotee_Cell_Phone_Number: form.elements.Devotee_Cell_Phone_Number.value.trim(),

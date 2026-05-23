@@ -191,6 +191,15 @@ $is_key_available = false;
             }
             }
         }
+
+        $devotee_dob_for_date = '';
+        if ($devotee_dob !== '' && $devotee_dob !== '1900-01-01') {
+            require_once dirname(__DIR__) . '/includes/kdms_dob.php';
+            $normalizedDob = kdms_normalize_devotee_dob($devotee_dob);
+            if ($normalizedDob !== null) {
+                $devotee_dob_for_date = $normalizedDob;
+            }
+        }
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -396,8 +405,8 @@ $is_key_available = false;
                                                 <div class="col-md-3"style="margin-top:36px;">
                                                     <div class="form-group">
                                                         <label class="bmd-label-floating">Date of Birth</label>
-                                                        <input type="text" class="form-control" name="devotee_dob" title="yyyy-mm-dd or dd-mm-yyyy" id="devotee_dob" value="<?php print_r($devotee_dob); ?>">
-                                                        <small class="form-text text-muted">Format: yyyy-mm-dd or dd-mm-yyyy</small>
+                                                        <input type="date" class="form-control" name="devotee_dob" id="devotee_dob"
+                                                               value="<?php echo htmlspecialchars($devotee_dob_for_date, ENT_QUOTES, 'UTF-8'); ?>">
                                                     </div>
                                                 </div>
                                             </div>

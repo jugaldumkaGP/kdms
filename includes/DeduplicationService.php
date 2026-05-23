@@ -691,8 +691,11 @@ final class DeduplicationService
         $sets = [];
         $params = ['k' => $baseKey];
         foreach ($fields as $col => $incoming) {
+            if ($incoming === '') {
+                continue;
+            }
             $sets[] = "{$col} = :{$col}";
-            $params[$col] = $incoming === '' ? null : $incoming;
+            $params[$col] = $incoming;
         }
         if ($sets === []) {
             return;

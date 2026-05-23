@@ -44,14 +44,14 @@ runtime_sa_email  = "run-kdms@project-12f4b54b-d692-4583-83b.iam.gserviceaccount
 # --- Database (Cloud SQL) ---
 # CURRENT DEPLOY: staging instance (kdms-api-prod / kdms-prod point here today).
 # Staging/test env values
-cloudsql_instance = "mysql-skm-prod"
-db_name           = "kdms"
-db_username       = "kdms"
+# cloudsql_instance = "mysql-skm-prod"
+# db_name           = "kdms"
+# db_username       = "kdms"
 
 # Production values
-# cloudsql_instance = "mysql-kdms-prod"
-# db_name           = "kdms_prod"
-# db_username       = "kdms_user"
+cloudsql_instance = "mysql-kdms-prod"
+db_name           = "kdms_prod"
+db_username       = "kdms_user"
 
 # PRODUCTION (required before Stream C BLOB migration — switch both kdms-prod + kdms-api-prod):
 # cloudsql_instance        = "mysql-kdms-prod"
