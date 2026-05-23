@@ -60,11 +60,11 @@ body {
 .header-band h1 {
   margin: 0;
   width: 80%;
-  font-size: clamp(1.75rem, 9vw, 2.25rem);
+  font-size: clamp(1.3125rem, 6.75vw, 1.6875rem);
   font-weight: 500;
   line-height: 1.2;
   color: var(--maroon);
-  text-align: left;
+  text-align: center;
 }
 
 .logo-wrap {
@@ -74,8 +74,8 @@ body {
 }
 
 .logo {
-  width: 5rem;
-  height: 5rem;
+  width: 7.5rem;
+  height: 7.5rem;
   object-fit: contain;
 }
 

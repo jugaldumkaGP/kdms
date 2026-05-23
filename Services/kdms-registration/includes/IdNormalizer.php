@@ -39,6 +39,7 @@ final class IdNormalizer
 
                 return $value;
 
+            case 'DL':
             case 'Driving License':
                 $value = strtoupper(preg_replace('/\s+/', '', $value) ?? $value);
 

@@ -38,6 +38,37 @@ final class RegistrationFields
         return strlen($value) > 50 ? substr($value, 0, 50) : $value;
     }
 
+    /** devotee.Devotee_ID_Type is VARCHAR(10); align with staff UI labels (DL, PAN, etc.). */
+    public static function sanitizeIdType(string $value): string
+    {
+        $value = trim(strip_tags($value));
+        if ($value === '') {
+            return '';
+        }
+
+        static $aliases = [
+            'aadhaar' => 'Aadhaar',
+            'aadhar' => 'Aadhaar',
+            'voter id' => 'Voter ID',
+            'pan' => 'PAN',
+            'pan card' => 'PAN',
+            'passport' => 'Passport',
+            'dl' => 'DL',
+            'driving license' => 'DL',
+            'driving licence' => 'DL',
+            'other' => 'Other',
+            'other gov. id' => 'Other',
+            'other government id' => 'Other',
+        ];
+
+        $key = mb_strtolower($value, 'UTF-8');
+        if (isset($aliases[$key])) {
+            return $aliases[$key];
+        }
+
+        return strlen($value) <= 10 ? $value : '';
+    }
+
     public static function sanitizeGender(string $value): string
     {
         $value = strtoupper(trim($value));
@@ -144,13 +175,15 @@ final class RegistrationFields
      */
     public static function fromRegistrationInput(array $input): array
     {
-        $idType = trim(strip_tags((string) ($input['Devotee_ID_Type'] ?? '')));
+        $rawIdType = trim(strip_tags((string) ($input['Devotee_ID_Type'] ?? '')));
+        $idType = self::sanitizeIdType($rawIdType);
         $idNumber = IdNormalizer::normalize($idType, (string) ($input['Devotee_ID_Number'] ?? ''));
 
         return [
             'first' => self::sanitizeName((string) ($input['Devotee_First_Name'] ?? '')),
             'last' => self::sanitizeName((string) ($input['Devotee_Last_Name'] ?? '')),
-            'idType' => strlen($idType) > 100 ? substr($idType, 0, 100) : $idType,
+            'idType' => $idType,
+            'rawIdType' => $rawIdType,
             'idNumber' => $idNumber,
             'phone' => self::sanitizePhone((string) ($input['Devotee_Cell_Phone_Number'] ?? '')),
             'dob' => self::parseDate((string) ($input['Devotee_DOB'] ?? '')),

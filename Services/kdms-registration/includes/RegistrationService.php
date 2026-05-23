@@ -25,6 +25,10 @@ final class RegistrationService
         $fields = RegistrationFields::fromRegistrationInput($input);
 
         if ($fields['first'] === '' || $fields['last'] === '' || $fields['idType'] === '' || $fields['idNumber'] === '') {
+            if (($fields['rawIdType'] ?? '') !== '' && $fields['idType'] === '') {
+                return ['success' => false, 'error' => 'Please select a valid ID type.'];
+            }
+
             return ['success' => false, 'error' => 'Please fill in all required fields.'];
         }
 

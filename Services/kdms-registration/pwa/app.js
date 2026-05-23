@@ -5,10 +5,10 @@
   const MED = 0.4;
   const ID_HINTS = {
     Aadhaar: '12-digit number',
-    'PAN Card': 'e.g. ABCDE1234F',
+    PAN: 'e.g. ABCDE1234F',
     Passport: 'e.g. A1234567',
     'Voter ID': '3 letters + 7 digits',
-    'Driving License': 'State format varies',
+    DL: 'State format varies',
     Other: ''
   };
 
