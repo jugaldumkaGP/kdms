@@ -254,6 +254,9 @@ Cloud SQL Studio cannot run this file (`DELIMITER` / error 1295 with `PREPARE`).
 | `scripts/create_registration_db_user.sql` | Modified | Grant template for new environments |
 | `api/config/DB Files/PROC_OPTIONS_CASE_SENSITIVE_TABLES.sql` | Modified | Test-env logic, lowercase tables, `DELIMITER` format for mysql CLI |
 | `api/config/DB Files/apply_proc_options_case_sensitive.sh` | **New** | Helper to apply procedure script via proxy |
+| `scripts/deploy-kdms-latest.sh` | **New** | One-command deploy: resolve latest GAR digests + `terraform apply` |
+| `.github/workflows/push-gar.yml` | Modified | Removed `pin-tfvars` job (digests resolved at deploy time by script) |
+| `Services/kdms-registration/pwa/index.html` | Modified | Header/title: “2026 June Bhandara Registration” |
 
 **Not changed (by design):** `RegistrationService.php`, `AccommodationAssigner.php` (logic already correct; DB grants required).
 
@@ -270,10 +273,27 @@ Cloud SQL Studio cannot run this file (`DELIMITER` / error 1295 with `PREPARE`).
 
 ### 11.2 Application deploy
 
-- [ ] Deploy **`kdms-prod`** (dashboard, kitchen UI, `getKitchenCounts.php`)
-- [ ] Deploy **`kdms-api-prod`** (`clsReport.php`, `devotees.php`, `clsKitchenDashboard.php` if served from API container — verify image layout; kitchen PHP may run on `kdms-prod` only)
+After code is merged to **`main`** and CI has built/pushed images to Artifact Registry, deploy all Cloud Run services from the **kdms repo root**:
 
-Confirm which Cloud Run service hosts `api/Interface/*.php` vs `UI/*.php` for your build; both images typically include the full tree.
+```bash
+./scripts/deploy-kdms-latest.sh --pull --yes
+```
+
+**What the script does**
+
+1. Optionally **`git pull origin main`** (`--pull`)
+2. Resolves the newest image **digests** from Artifact Registry (`branch-main`, or local **`git` HEAD** short SHA when that tag exists)
+3. Updates **`terraform/terraform.tfvars`** and runs **`terraform plan`** + **`apply`**
+
+**Useful flags:** `--plan-only` (preview only), `--wait` (poll until Cloud Run revisions are ready), `--rolling` (always use `branch-main`, skip HEAD SHA). See `./scripts/deploy-kdms-latest.sh --help`.
+
+**Prerequisites:** `gcloud` (authenticated to `project-12f4b54b-d692-4583-83b`), `terraform`, and CI images already in GAR.
+
+**Services rolled out** (per `terraform.tfvars`): **`kdms-prod`**, **`kdms-api-prod`**, **`kdms-registration-prod`**, and **`kdms-reports-prod`** when enabled. This replaces the former manual flow (`git pull` → edit/wait for CI-pinned tfvars → `terraform plan` → `terraform apply`).
+
+**Note:** CI still **builds and pushes** images on push to `main`; it no longer commits digest pins to `terraform.tfvars`. Digests are resolved at deploy time by the script.
+
+Confirm which Cloud Run service hosts `api/Interface/*.php` vs `UI/*.php` for your build; both main/API images typically include the full tree.
 
 ### 11.3 Verification
 
@@ -312,5 +332,10 @@ Same application images can behave differently when pointed at `mysql-skm-prod` 
 - Production logs: GCP Cloud Logging, services `kdms-registration-prod`, `kdms-api-prod`, project `project-12f4b54b-d692-4583-83b`
 
 ---
+Deploy Latest images:
+
+cd /Applications/XAMPP/xamppfiles/htdocs/kdms
+
+./scripts/deploy-kdms-latest.sh --pull --yes
 
 *End of document*

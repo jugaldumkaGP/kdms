@@ -39,17 +39,15 @@ The **`run-kdms@...`** service account must have **`roles/cloudsql.client`** on 
 
 5. The monorepo includes **`Services/kdms-reports`** and **`Services/kdms-ocr`**; CI builds all four images from one push.
 
-CI does **not** deploy Cloud Run automatically; after each push to **`main`**, the **pin-tfvars** job in **`.github/workflows/push-gar.yml`** resolves each service’s **`branch-main`** digest in Artifact Registry and commits updated **`image_digest`** / **`*_image_digest`** fields in **`terraform.tfvars`** (commit message includes **`[skip ci]`** so only one image build runs per code push). Run **`terraform apply`** locally or in a separate pipeline to roll out new revisions.
+CI does **not** deploy Cloud Run automatically. After each push to **`main`**, CI builds and pushes images tagged **`branch-main`** and the short git SHA. Deploy with **`./scripts/deploy-kdms-latest.sh`** from the repo root (resolves digests from Artifact Registry and runs **`terraform apply`**).
 
-To pin digests manually without waiting for CI (requires `gcloud` auth; works on macOS bash 3.2):
+To pin digests manually without the deploy script (requires `gcloud` auth; works on macOS bash 3.2):
 
 ```bash
-cd terraform
-bash scripts/ci-update-image-digests.sh terraform.tfvars
-git diff terraform.tfvars
+bash terraform/scripts/ci-update-image-digests.sh terraform/terraform.tfvars
+git diff terraform/terraform.tfvars
+cd terraform && terraform plan && terraform apply
 ```
-
-**You should not need this on every deploy** if `pin-tfvars` succeeds on GitHub — `git pull` before `terraform apply` instead.
 
 ### Artifact Registry
 
@@ -87,13 +85,25 @@ terraform plan
 
 ## Day-to-day deploys (new image)
 
-After CI builds and pushes images (and commits digests to **`terraform.tfvars`** on **`main`**):
-
-1. **`git pull origin main`** so **`terraform/terraform.tfvars`** has the digests from **`pin-tfvars`** (do not apply from a stale checkout).
-2. **`cd terraform`** and run **`terraform plan`** — you should see **`containers.image`** change when pins moved; if the plan only shows **`scaling`** drift, your tfvars are still stale (pull again or run **`scripts/ci-update-image-digests.sh`**).
-3. Plan and apply (from **`terraform/`**):
+**One command (recommended):** from the repo root, after CI has pushed images to Artifact Registry:
 
 ```bash
+./scripts/deploy-kdms-latest.sh --pull --yes
+```
+
+This script (same idea as `nlp/scripts/deploy-anepi-latest.sh`):
+
+1. Optionally **`git pull origin main`** (`--pull`)
+2. Resolves the newest image digests from GAR (`branch-main`, or your local **`git` HEAD short SHA** when that tag exists in the registry)
+3. Updates **`terraform/terraform.tfvars`** and runs **`terraform plan`** + **`apply`**
+
+Options: `--plan-only`, `--yes` / `-y`, `--wait` (poll Cloud Run until revisions are ready), `--rolling` (always use `branch-main`, skip HEAD SHA). See `./scripts/deploy-kdms-latest.sh --help`.
+
+**Manual flow** (equivalent to the script):
+
+```bash
+git pull origin main
+bash terraform/scripts/ci-update-image-digests.sh terraform/terraform.tfvars
 cd terraform
 terraform plan -out=plan.tfplan
 terraform apply plan.tfplan

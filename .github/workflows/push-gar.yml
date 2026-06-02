@@ -7,7 +7,7 @@ on:
   workflow_dispatch: {}
 
 permissions:
-  contents: write
+  contents: read
   id-token: write
 
 env:
@@ -129,56 +129,3 @@ jobs:
           echo "Full ref: ${REF}"
           gcloud artifacts docker images describe "${REF}" --format='value(name)' >/dev/null
           echo "OK — manifest present in ${PROJECT_ID} Artifact Registry."
-
-  # Pin digests in terraform.tfvars so the next `terraform apply` creates new Cloud Run revisions.
-  pin-tfvars:
-    needs: build-push
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Authenticate to Google Cloud
-        uses: google-github-actions/auth@v2
-        with:
-          project_id: ${{ env.PROJECT_ID }}
-          service_account: ci-builder-kdms@project-12f4b54b-d692-4583-83b.iam.gserviceaccount.com
-          workload_identity_provider: ${{ vars.GCP_WIF_PROVIDER }}
-
-      - name: Set up Cloud SDK
-        uses: google-github-actions/setup-gcloud@v2
-        with:
-          project_id: ${{ env.PROJECT_ID }}
-
-      - name: Update terraform.tfvars digests
-        id: pin
-        env:
-          GAR_REGION: ${{ env.GAR_REGION }}
-          PROJECT_ID: ${{ env.PROJECT_ID }}
-          GAR_REPOSITORY: ${{ env.GAR_REPOSITORY }}
-          ROLLING_TAG: branch-main
-        run: |
-          set -euo pipefail
-          chmod +x terraform/scripts/ci-update-image-digests.sh
-          bash terraform/scripts/ci-update-image-digests.sh terraform/terraform.tfvars
-          if git diff --quiet terraform/terraform.tfvars; then
-            echo "changed=false" >> "$GITHUB_OUTPUT"
-            echo "No digest changes in terraform.tfvars."
-          else
-            echo "changed=true" >> "$GITHUB_OUTPUT"
-            git diff terraform/terraform.tfvars
-          fi
-
-      - name: Commit and push terraform.tfvars
-        if: steps.pin.outputs.changed == 'true'
-        run: |
-          set -euo pipefail
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add terraform/terraform.tfvars
-          SHORT_SHA="$(echo "${GITHUB_SHA}" | cut -c1-7)"
-          git commit -m "chore(terraform): pin image digests from CI (${SHORT_SHA}) [skip ci]"
-          git push
