@@ -31,12 +31,12 @@ api_service_name = "kdms-api-prod"
 ar_repo    = "apps"
 image_name = "kdms-main"
 # Optional: pin with sha256:… ; leave empty to use branch-main (or set image_tag).
-image_digest = "sha256:70fe165662b00c9ce417ea2a457292034f1f5e556096d7e75cd1283242ec4e0e"
+image_digest = "sha256:8ebdbee9b743a662636869ebde653893f17c16dda7659c44d8087def4c8c3093"
 image_tag    = ""
 # rolling_image_tag = "branch-main"  # when digest and image_tag are both empty
 
 api_image_name   = "kdms-api"
-api_image_digest = "sha256:e2cabb8e6589a0292b92192a17f8814c321c7cb62bcd834d896d61b93f1d16d8"
+api_image_digest = "sha256:b5d3dc5c77dacb8edf1bd6c30a3e3a3c6e3333ae64056a0d3f97e377cfc09052"
 api_image_tag    = ""
 
 runtime_sa_email  = "run-kdms@project-12f4b54b-d692-4583-83b.iam.gserviceaccount.com"
@@ -106,7 +106,7 @@ enable_reports_service = true
 reports_service_name = "kdms-reports-prod"
 reports_image_name   = "kdms-reports"
 reports_image_uri    = ""
-reports_image_digest = "sha256:6781fdd586e50e6c6d0f9cac526cc73faa0949fda4b559a7004f6d62d0eea2c0"
+reports_image_digest = "sha256:a65874eb13e033392ec22538db3cdfb12519f777529d944b95c319a8acc2ea7f"
 reports_image_tag    = ""
 # Placeholder — replace with actual URL after first deploy or from `gcloud run services describe`.
 reports_url = "https://kdms-reports-prod-684080887473.asia-south1.run.app"
@@ -132,7 +132,7 @@ enable_registration_service = true
 registration_service_name = "kdms-registration-prod"
 registration_image_name   = "kdms-registration"
 registration_image_uri    = ""
-registration_image_digest = "sha256:bb38d4ee42ad0963e0d25539c8d390b6850db736bfa79f6ec33a458420501a27"
+registration_image_digest = "sha256:aefd9a19b95526f57320a1f88408176a908bc59adcdf6b4d444ec248d4912337"
 registration_image_tag    = ""
 # Public URL for kdms-registration-prod. Terraform sets KDMS_REGISTRATION_URL on kdms-api-prod
 # (used by api/staffOcrExtract.php — required for staff "Scan ID Card" on addDevoteeI).
@@ -154,4 +154,4 @@ document_ai_processor_version = ""
 
 # Optional: only if the connection name must differ from project_id:region:instance
 # cloudsql_connection_name = "project-12f4b54b-d692-4583-83b:asia-south1:mysql-skm-prod"
-ocr_image_digest = "sha256:40a3f3fdae0f07306d22dfd30ca598588922e340a4276b0cfdd93fe80bbdce6a"
+ocr_image_digest = "sha256:5bc442106798c713657e434a6943de06407a9abdde87cc0b8647b85b3cd7cad3"
