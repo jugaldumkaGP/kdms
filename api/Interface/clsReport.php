@@ -195,8 +195,10 @@ class clsReport {
         $devoteeResults = array();
 
 
-        //1. Total devotees present in the ashram
-        $query[0] = "SELECT sum(acco.allocated_Count) as SpaceOccupiedOrDevoteesPresent FROM `accommodation_availability` acco WHERE acco.available_count < 1000 ";
+        //1. Devotees with allocated accommodation for the event (dashboard drill-down: SET key AR)
+        $query[0] = "SELECT COUNT(DISTINCT acco.Devotee_Key) AS SpaceOccupiedOrDevoteesPresent
+            FROM devotee_accomodation acco
+            WHERE acco.Accomodation_Status = 'Allocated'";
 
         //2. Devotees registered for seva (assigned), excluding seva code UN
         $query[1] = "SELECT COUNT(DISTINCT ds.Devotee_Key) AS DevoteesRegisteredForSeva

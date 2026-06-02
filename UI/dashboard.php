@@ -324,7 +324,7 @@ if (! is_array($sevaRes)) {
                     <div class="card-footer">
                         <div class="stats">
                             <i class="material-icons text-danger">home</i>
-                            <a href="../UI/devoteeSearchResult.php?mode=CUS&key=" class="dash-link">Devotees Residing in Ashram:  
+                            <a href="../UI/devoteeSearchResult.php?mode=SET&amp;key=AR" class="dash-link">Devotees Residing in Ashram:  
                                 <b>  <?= $dashboardStat(is_array($response) ? $response : null, 0, 'SpaceOccupiedOrDevoteesPresent'); ?> </b> </a>
                         </div>
                     </div>

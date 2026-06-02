@@ -223,6 +223,10 @@ $eventId = $config_data['event_id'];
                         $showSelection = TRUE;
                         break;
 
+                    case "AR":
+                        $gridTitle = "Devotees Residing in Ashram (allocated accommodation)";
+                        break;
+
                     default :
                         $gridTitle = "Devotee Search Result";
                         break;
