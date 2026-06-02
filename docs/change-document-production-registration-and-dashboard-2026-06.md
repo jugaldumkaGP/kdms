@@ -256,7 +256,7 @@ Cloud SQL Studio cannot run this file (`DELIMITER` / error 1295 with `PREPARE`).
 | `api/config/DB Files/apply_proc_options_case_sensitive.sh` | **New** | Helper to apply procedure script via proxy |
 | `scripts/deploy-kdms-latest.sh` | **New** | One-command deploy: resolve latest GAR digests + `terraform apply` |
 | `.github/workflows/push-gar.yml` | Modified | Removed `pin-tfvars` job (digests resolved at deploy time by script) |
-| `Services/kdms-registration/pwa/index.html` | Modified | Header/title: “2026 June Bhandara Registration” |
+| `Services/kdms-registration/pwa/index.html` | Modified | Header/title: “2026 June Bhandara Registration Request” |
 
 **Not changed (by design):** `RegistrationService.php`, `AccommodationAssigner.php` (logic already correct; DB grants required).
 
