@@ -22,9 +22,18 @@ if (!empty($_GET['key'])) {
     unset($devoteeSearch);
 
     if (!empty($response)) {
-        foreach ($response as $devoteeRecord) {
+        foreach ((array) $response as $idx => $devoteeRecord) {
+            if (in_array((string) $idx, ['status', 'message', 'info'], true)) {
+                continue;
+            }
+            if (is_object($devoteeRecord)) {
+                $devoteeRecord = (array) $devoteeRecord;
+            }
+            if (!is_array($devoteeRecord)) {
+                continue;
+            }
             $get_val = function ($key, $default = "N/A") use ($devoteeRecord) {
-                return !empty($devoteeRecord[$key]) ? urldecode($devoteeRecord[$key]) : $default;
+                return !empty($devoteeRecord[$key]) ? urldecode((string) $devoteeRecord[$key]) : $default;
             };
 
             $devotee_key = $get_val('devotee_key');
@@ -53,6 +62,9 @@ if ($debug && isset($response)) { // Check if $response is set before var_dump
     // To debug processed data: var_dump($devotees_to_print);
     die;
 }
+
+$webroot = isset($config_data['webroot']) ? rtrim((string) $config_data['webroot'], '/') . '/' : '';
+$bannerImgSrc = $webroot . 'assets/img/banner.png';
 ?>
 <html>
 <head>
@@ -234,7 +246,7 @@ if ($debug && isset($response)) { // Check if $response is set before var_dump
                   $devotee = $devotees_to_print[$j]; 
             ?>
             <div class="card-item" id="card-<?php echo $j; ?>">
-                <img src="/kdms/assets/img/banner.png" height="35px" width="314px" alt="Banner" class="banner">
+                <img src="<?php echo htmlspecialchars($bannerImgSrc); ?>" height="35px" width="314px" alt="Banner" class="banner">
                 <div class="year-display">
                     <?php echo date('Y'); ?>
                 </div>
