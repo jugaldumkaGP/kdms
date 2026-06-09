@@ -72,6 +72,7 @@ $bannerImgSrc = $webroot . 'assets/img/banner.png';
         body {
             font-family: sans-serif;
             margin: 0;
+            padding: 0;
         }
         #printpage {
             display: flex;
@@ -86,11 +87,11 @@ $bannerImgSrc = $webroot . 'assets/img/banner.png';
             border-radius: 4px;
             border: 2px solid #2c2c2c;
             min-height: 220px;
-            width: 360px;
+            width: 324px;
             max-width: calc(100% - 16px);
             margin-left: auto;
             margin-right: auto;
-            margin-bottom: 7px;
+            margin: 0 auto 7px auto;
             page-break-inside: avoid;
             overflow: hidden;
             -webkit-print-color-adjust: exact;
@@ -101,7 +102,7 @@ $bannerImgSrc = $webroot . 'assets/img/banner.png';
             display: block;
             width: 100%;
             height: 35px;
-            object-fit: cover;
+            object-fit: fill;
         }
         .card-accent-strip {
             height: 3px;
