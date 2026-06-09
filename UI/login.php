@@ -21,8 +21,16 @@ $phone = '';
 $access = '';
 $message = '';
 
-// Fresh login page (GET or no credentials posted): clear prior session — same behavior as old body block.
+// GET / no-credentials path: decide whether to show the login form or redirect.
 if (empty($_POST['loginID'])) {
+    if (session_status() === PHP_SESSION_ACTIVE && ! empty($_SESSION['LoginID']) && ! empty($_SESSION['Role'])) {
+        // User is already authenticated — redirect to the main app instead of destroying the session.
+        // This prevents accidental logout when the browser navigates back to login.php.
+        $url = $config_data['webroot'] . 'UI/index.php';
+        header('Location: ' . $url);
+        exit;
+    }
+    // No valid session — clear any partial/stale session data before showing the login form.
     if (session_status() === PHP_SESSION_ACTIVE) {
         session_unset();
         session_destroy();
@@ -66,7 +74,17 @@ if (!empty($requestData['loginID'])) {
         $access = urldecode($response['Access']);
     }
 
-    if (!empty($loginID)) {
+    // Guard: a user without a Role cannot pass sessionCheck.php, so treat it as a login failure
+    // rather than silently setting $_SESSION['Role'] = '' which would immediately log them out.
+    if (!empty($loginID) && $role === '') {
+        $message = 'Login failed: user account has no role assigned. Please contact the administrator.';
+        $loginID = $requestData['loginID'];
+        $password = $requestData['password'];
+    } elseif (!empty($loginID)) {
+        // Regenerate the session ID on every successful login to prevent session-fixation attacks.
+        // Delete the old session file so stale data can't be replayed.
+        session_regenerate_id(true);
+
         $_SESSION['LoginID'] = $loginID;
         $_SESSION['UserName'] = $name;
         $_SESSION['UserEmail'] = $email;
@@ -78,11 +96,13 @@ if (!empty($requestData['loginID'])) {
         exit;
     }
 
-    $failMsg = isset($response['message']) ? trim((string) $response['message']) : '';
-    if ($failMsg !== '') {
-        $message = $failMsg;
-    } else {
-        $message = 'Incorrect credentials!';
+    if ($message === '') {
+        $failMsg = isset($response['message']) ? trim((string) $response['message']) : '';
+        if ($failMsg !== '') {
+            $message = $failMsg;
+        } else {
+            $message = 'Incorrect credentials!';
+        }
     }
     $loginID = $requestData['loginID'];
     $password = $requestData['password'];

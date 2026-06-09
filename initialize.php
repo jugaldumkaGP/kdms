@@ -36,19 +36,19 @@ if ($_SESSION["eventDesc"] === '') {
             echo "Repopulating event description..", "<br>";
         }
         // Same PHP instance holds the session lock; child Apache request (loadOptions.php) would block
-        // on session_start() forever. Pass Cookie + release lock before CURL.
-        $GLOBALS['KDMS_INTERNAL_SESSION_COOKIE'] = session_name() . '=' . session_id();
-        session_write_close();
+        // on session_start() forever. Release the lock via kdms_begin_internal_apache_curl() so that
+        // the shutdown function is registered — this ensures the session is always restarted even if
+        // a fatal error or max_execution_time fires before kdms_end_internal_apache_curl() is called.
+        // kdms_internal_http.php is already loaded by Logic/clsOptionHandler.php above.
+        kdms_begin_internal_apache_curl();
 
         $optionHandler = new clsOptionHandler('EventDetail');
         $optionHandler->setOptionKey($eventID);
         $optionHandler->setEventId($eventID);
         $response = $optionHandler->getOptions();
-        unset($GLOBALS['KDMS_INTERNAL_SESSION_COOKIE']);
-
-        if (session_status() !== PHP_SESSION_ACTIVE) {
-            session_start();
-        }
+        // getOptionsFromAPI() already called kdms_end_internal_apache_curl() which restarts the
+        // session; calling it again here is a safe no-op when the session is already active.
+        kdms_end_internal_apache_curl();
 
         if ($debug) {
             echo '<br> Response: ';

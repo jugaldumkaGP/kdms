@@ -22,14 +22,21 @@ if ($debug) {
     echo '<br>';
 }
 
+// ── Collect the reason(s) a check fails so we can log them precisely ──────────
+$failReasons = [];
+
 if (session_status() === PHP_SESSION_DISABLED) {
     $result = false;
+    $failReasons[] = 'sessions_disabled';
 } else {
     if (! isset($_SESSION['eventDesc'])) {
         $result = false;
+        $failReasons[] = 'eventDesc_missing';
     } elseif ($_SESSION['eventDesc'] === '') {
         $result = false;
+        $failReasons[] = 'eventDesc_empty';
     }
+
     if ($debug) {
         echo '<br> result : ';
         var_dump($result);
@@ -37,8 +44,10 @@ if (session_status() === PHP_SESSION_DISABLED) {
 
     if (! isset($_SESSION['LoginID'])) {
         $result = false;
+        $failReasons[] = 'LoginID_missing';
     } elseif ($_SESSION['LoginID'] === '') {
         $result = false;
+        $failReasons[] = 'LoginID_empty';
     }
 
     if ($debug) {
@@ -48,8 +57,10 @@ if (session_status() === PHP_SESSION_DISABLED) {
 
     if (! isset($_SESSION['Role'])) {
         $result = false;
+        $failReasons[] = 'Role_missing';
     } elseif ($_SESSION['Role'] === '') {
         $result = false;
+        $failReasons[] = 'Role_empty';
     }
 
     if ($debug) {
@@ -59,14 +70,62 @@ if (session_status() === PHP_SESSION_DISABLED) {
 
     if ($config_data['check_access']) {
         if (! isset($_SESSION['Access'])) {
-            $result = false;
+            // Access key missing entirely — only hard-fail if the user also has no LoginID
+            // (i.e. truly unauthenticated).  If LoginID is present but Access is absent, we
+            // treat it as a permissions problem rather than a session problem so the session
+            // is not destroyed by the subsequent login.php GET redirect.
+            if ($result) {
+                // LoginID and Role passed — user is authenticated but has no permissions.
+                require_once __DIR__ . '/includes/kdms_log.php';
+                kdms_log('WARNING', 'KDMS authenticated user has no Access grants', [
+                    'LoginID'      => $_SESSION['LoginID'] ?? '',
+                    'Role'         => $_SESSION['Role'] ?? '',
+                    'page_id'      => $current_page_id ?? '',
+                    'session_id'   => session_id(),
+                ]);
+                if (defined('KDMS_AUTH_RESPONSE_JSON') && KDMS_AUTH_RESPONSE_JSON === true) {
+                    if (! headers_sent()) {
+                        header('Content-Type: application/json; charset=utf-8');
+                        header('HTTP/1.1 403 Forbidden');
+                    }
+                    echo '{"ok":false,"error":"no_access_grants"}';
+                    exit;
+                }
+                echo '<b>Your account has no access grants. Please contact the administrator.</b>';
+                exit;
+            }
+            $failReasons[] = 'Access_missing';
         } elseif ($_SESSION['Access'] === '') {
-            $result = false;
+            // Same logic: empty Access string means no grants.
+            if ($result) {
+                require_once __DIR__ . '/includes/kdms_log.php';
+                kdms_log('WARNING', 'KDMS authenticated user has empty Access grants', [
+                    'LoginID'      => $_SESSION['LoginID'] ?? '',
+                    'Role'         => $_SESSION['Role'] ?? '',
+                    'page_id'      => $current_page_id ?? '',
+                    'session_id'   => session_id(),
+                ]);
+                if (defined('KDMS_AUTH_RESPONSE_JSON') && KDMS_AUTH_RESPONSE_JSON === true) {
+                    if (! headers_sent()) {
+                        header('Content-Type: application/json; charset=utf-8');
+                        header('HTTP/1.1 403 Forbidden');
+                    }
+                    echo '{"ok":false,"error":"no_access_grants"}';
+                    exit;
+                }
+                echo '<b>Your account has no access grants. Please contact the administrator.</b>';
+                exit;
+            }
+            $failReasons[] = 'Access_empty';
         } elseif (isset($current_page_id)) {
             $accessParts = explode(',', (string) $_SESSION['Access']);
             if (! in_array($current_page_id, $accessParts, true)) {
                 require_once __DIR__ . '/includes/kdms_log.php';
-                kdms_log('WARNING', 'KDMS page ACL denied', ['page_id' => $current_page_id]);
+                kdms_log('WARNING', 'KDMS page ACL denied', [
+                    'page_id'    => $current_page_id,
+                    'LoginID'    => $_SESSION['LoginID'] ?? '',
+                    'session_id' => session_id(),
+                ]);
                 if (defined('KDMS_AUTH_RESPONSE_JSON') && KDMS_AUTH_RESPONSE_JSON === true) {
                     if (! headers_sent()) {
                         header('Content-Type: application/json; charset=utf-8');
@@ -89,7 +148,17 @@ if ($debug) {
 
 if (! $result) {
     require_once __DIR__ . '/includes/kdms_log.php';
-    kdms_log('NOTICE', 'KDMS authentication or session check failed');
+    kdms_log('NOTICE', 'KDMS session check failed', [
+        'reasons'    => implode(',', $failReasons),
+        'session_id' => session_id(),
+        'has_login'  => isset($_SESSION['LoginID']) ? (string) $_SESSION['LoginID'] : 'MISSING',
+        'has_role'   => isset($_SESSION['Role']) ? (string) $_SESSION['Role'] : 'MISSING',
+        'event_desc' => isset($_SESSION['eventDesc'])
+            ? (strlen((string) $_SESSION['eventDesc']) > 0 ? 'set' : 'EMPTY')
+            : 'MISSING',
+        'script'     => basename($_SERVER['SCRIPT_FILENAME'] ?? ''),
+        'page_id'    => $current_page_id ?? '',
+    ]);
 
     if (defined('KDMS_AUTH_RESPONSE_JSON') && KDMS_AUTH_RESPONSE_JSON === true) {
         if (! headers_sent()) {

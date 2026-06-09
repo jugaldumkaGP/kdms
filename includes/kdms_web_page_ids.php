@@ -24,12 +24,13 @@ return [
     'addAccommodationI.php'   => 'KD-ACCO-I',
     'addAccommodationII.php'  => 'KD-ACCO-II',
     'addDevoteeI.php'          => 'KD-DVT-I',
-    // Same-host Logic proxies (staff add-devotee photo/OCR/dedup); require web_session ACL.
+    // Same-host Logic proxies (staff add-devotee photo/OCR/dedup/merge); require web_session ACL.
     'managePhotoProxy.php'     => 'KD-DVT-I',
     'staffOcrExtractProxy.php' => 'KD-DVT-I',
     'dedupHintsProxy.php'      => 'KD-DVT-I',
     'dedupCheckProxy.php'      => 'KD-DVT-I',
     'devoteePhotoProxy.php'    => 'KD-DVT-I',
+    'adminMergeProxy.php'      => 'KD-DVT-I',
     'addSevaI.php'             => 'KD-SEVA-I',
     'addSevaII.php'            => 'KD-SEVA-II',
     'AddSevaII.php'             => 'KD-SEVA-II',
