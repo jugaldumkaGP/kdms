@@ -4,10 +4,10 @@ require_once __DIR__ . '/includes/kdms_log.php';
 
 kdms_log_bootstrap();
 
+require_once __DIR__ . '/includes/kdms_session.php';
+
 $debug = false;
-if (session_status() === PHP_SESSION_NONE) {
-    session_start();
-}
+kdms_session_start();
 if ($debug) {
     echo 'current session ID: ', session_id(), '<br>', 'session_status: ', session_status(), '<br>';
 }

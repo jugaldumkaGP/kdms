@@ -5,9 +5,10 @@ declare(strict_types=1);
 $debug = false;
 
 require_once dirname(__DIR__) . '/includes/kdms_log.php';
+require_once dirname(__DIR__) . '/includes/kdms_session.php';
 kdms_log_bootstrap();
 
-session_start();
+kdms_session_start();
 
 $config_data = include_once '../site_config.php';
 include_once '../Logic/clsAdminTasks.php';
@@ -36,7 +37,7 @@ if (empty($_POST['loginID'])) {
         session_destroy();
     }
     if (session_status() === PHP_SESSION_NONE) {
-        session_start();
+        kdms_session_start();
     }
 }
 

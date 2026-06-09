@@ -63,7 +63,8 @@ locals {
     APP_ENV           = "production"
     APP_DEBUG         = "false"
     LOG_CHANNEL       = "stderr"
-    SESSION_DRIVER    = "cookie"
+    SESSION_DRIVER    = "database"
+    SESSION_LIFETIME  = "28800"
     CACHE_DRIVER      = "array"
     TRUSTED_PROXIES   = "*"
     KDMS_EVENT_ID     = var.kdms_event_id
@@ -89,6 +90,7 @@ locals {
     "APP_DEBUG",
     "LOG_CHANNEL",
     "SESSION_DRIVER",
+    "SESSION_LIFETIME",
     "CACHE_DRIVER",
     "TRUSTED_PROXIES",
     "KDMS_EVENT_ID",

@@ -21,6 +21,8 @@ services:
       API_BASE_URL: "http://localhost:8081/api/"
       KDMS_INTERNAL_ORIGIN: "http://kdms-api:8080"
       KDMS_DB_HOST: "host.docker.internal:3306"
+      SESSION_DRIVER: "database"
+      SESSION_LIFETIME: "28800"
       KDMS_SERVICE_KEY: "${KDMS_SERVICE_KEY:-local-dev-shared-key}"
     extra_hosts:
       - "host.docker.internal:host-gateway"
@@ -47,6 +49,8 @@ services:
       KDMS_INTERNAL_ORIGIN: "http://127.0.0.1:8080"
       KDMS_REGISTRATION_URL: "http://kdms-registration:8080"
       KDMS_DB_HOST: "host.docker.internal:3306"
+      SESSION_DRIVER: "database"
+      SESSION_LIFETIME: "28800"
       KDMS_SERVICE_KEY: "${KDMS_SERVICE_KEY:-local-dev-shared-key}"
     extra_hosts:
       - "host.docker.internal:host-gateway"

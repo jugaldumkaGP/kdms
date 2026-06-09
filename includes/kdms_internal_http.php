@@ -40,7 +40,8 @@ function kdms_end_internal_apache_curl(): void
     if (session_status() === PHP_SESSION_DISABLED) {
         return;
     }
-    session_start();
+    require_once __DIR__ . '/kdms_session.php';
+    kdms_session_start();
 }
 
 function kdms_curl_setopt_internal_cookie($ch): void

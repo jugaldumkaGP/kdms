@@ -12,8 +12,9 @@ declare(strict_types=1);
  */
 
 require_once dirname(__DIR__) . '/includes/kdms_log.php';
+require_once dirname(__DIR__) . '/includes/kdms_session.php';
 
-session_start();
+kdms_session_start();
 
 $loggedInAs = $_SESSION['LoginID'] ?? '';
 
@@ -21,7 +22,7 @@ session_unset();
 session_destroy();
 
 // Regenerate ID so the browser's old session cookie cannot be reused.
-session_start();
+kdms_session_start();
 session_regenerate_id(true);
 
 kdms_log('NOTICE', 'KDMS user logged out', ['LoginID' => $loggedInAs !== '' ? $loggedInAs : '(unknown)']);

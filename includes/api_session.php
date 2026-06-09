@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 /**
  * Mandatory session authentication for KDMS endpoints that return JSON or non-redirect responses.
+ *
+ * Session storage is bootstrapped in initialize.php via includes/web_session.php (database
+ * when SESSION_DRIVER=database). X-KDMS-SERVICE-KEY trusted-service auth is unchanged.
  */
 
 require_once __DIR__ . '/kdms_log.php';
