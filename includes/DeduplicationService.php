@@ -1230,9 +1230,25 @@ final class DeduplicationService
             'alias' => $aliasKey !== null && $aliasKey !== '' ? strtoupper($aliasKey) : null,
             'idn' => $aliasIdNumber,
             'idt' => $aliasIdType,
-            'src' => $mergeSource,
+            'src' => $this->normalizeMergeSourceForDb($mergeSource),
             'score' => $mergeScore,
         ]);
+    }
+
+    /**
+     * devotee_aliases.Merge_Source is ENUM('manual', 'auto_definite', 'auto_fuzzy_review', 'batch_dedup').
+     */
+    private function normalizeMergeSourceForDb(string $mergeSource): string
+    {
+        $allowed = ['manual', 'auto_definite', 'auto_fuzzy_review', 'batch_dedup'];
+        if (in_array($mergeSource, $allowed, true)) {
+            return $mergeSource;
+        }
+        if ($mergeSource === 'manual_utility') {
+            return 'manual';
+        }
+
+        return 'manual';
     }
 
     /**
