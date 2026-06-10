@@ -1,11 +1,5 @@
 # Apache + PHP (Cloud Run: listens on $PORT, default 8080)
-# syntax=docker/dockerfile:1.6
-FROM composer:2 AS vendor
-WORKDIR /app
-COPY composer.json composer.lock ./
-# Vendor image PHP may lack ext-gd; final image installs gd. Lock still resolves.
-RUN composer install --no-dev --no-interaction --no-scripts --optimize-autoloader --ignore-platform-req=ext-gd
-
+# Single base image from Docker Hub (composer installed in-image to avoid a second Hub pull in CI).
 FROM php:8.3-apache
 RUN a2enmod rewrite \
     && apt-get update && apt-get install -y --no-install-recommends \
@@ -13,13 +7,19 @@ RUN a2enmod rewrite \
         libfreetype6-dev \
         libjpeg62-turbo-dev \
         libpng-dev \
+        unzip \
+        curl \
+        ca-certificates \
     && docker-php-ext-configure gd --with-freetype --with-jpeg \
     && docker-php-ext-install -j"$(nproc)" gd pdo pdo_mysql mysqli zip \
+    && curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /var/www/kdms
+COPY composer.json composer.lock ./
+RUN composer install --no-dev --no-interaction --no-scripts --optimize-autoloader --ignore-platform-req=ext-gd
+
 COPY . .
-COPY --from=vendor /app/vendor ./vendor
 COPY docker/kdms-vhost.conf /etc/apache2/sites-available/kdms-vhost.conf
 COPY docker/kdms-vhost-prefix.conf /etc/apache2/sites-available/kdms-vhost-prefix.conf
 COPY docker/kdms-vhost.conf /etc/apache2/sites-enabled/000-default.conf
