@@ -64,18 +64,6 @@ $navCanKitchen = kdms_session_has_asset('KD-KITCHEN');
       </li>
 
       <li class="nav-item ">
-        <a class="nav-link" href="./devoteeSearchResult.php?mode=SET&key=PWD">
-          <i class="material-icons">camera_front</i>
-          <p>Devotee Records with Photo</p>
-        </a>
-      </li>
-      <li class="nav-item ">
-        <a class="nav-link" href="./devoteeSearchResult.php?mode=SET&key=DWP">
-          <i class="material-icons">camera_enhance</i>
-          <p>Devotee Records w/o Photo</p>
-        </a>
-      </li>     
-      <li class="nav-item ">
         <a class="nav-link" href="./devoteeSearchResult.php?mode=SET&key=CTP">
           <i class="material-icons">print</i>
           <p>Devotee Cards for Printing</p>

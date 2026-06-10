@@ -265,63 +265,6 @@ $bannerImgSrc = $webroot . 'assets/img/banner.png';
             <img src="<?php echo htmlspecialchars($bannerImgSrc); ?>" height="35px" width="100%" alt="Banner" class="banner" style="max-width:360px;">
             <div class="card-accent-strip"></div>
             <div class="card-body">
-                <!-- This is for prasad vitran -->
-                <?php if ($devotee['status'] == "D" && $devotee['devotee_type'] == "T" && stripos($devotee['devotee_referral'], 'devesh') === 0) : // Day Visitor Card ?>
-                <span class="devotee-name" style="text-align:center;">
-                    <?php echo htmlspecialchars($devotee['first_name'] . ' ' . $devotee['last_name']); ?>
-                </span>
-                    <span class="devotee-status" style="font-size: 14px;">
-                        <?php echo '( ' . $devotee['key'] . ' )'; ?>
-                    </span>
-                    <span class="devotee-status" style="margin:0;">Prasad Vitran</span>
-                    <hr style="width: 80%; margin: 5px 0; margin: 0 auto;">
-
-                        <span style="display: block; text-align: center; margin-bottom: 2px; margin-top: 10px; font-size: 14px; font-weight: bold;">Referred by: </span>
-                        <div class="details-row" style="margin-top: 0; margin-bottom:10px;">
-                            <div class="details-row" style="text-align: center;">
-                                <span class="card-data"
-                                      style="font-size: 16px; font-weight: bold; display: inline-block; margin-left: 0;">
-                                    <?php echo 'Devesh Agarwal Ji'; ?>
-                                </span>
-                            </div>
-                        </div>
-                        <span class="card-footer">
-                            This card is not valid after 15th June <strong>2025</strong>
-                        </span>
-                <?php elseif ($devotee['status'] == "D" && $devotee['devotee_type'] == "T"): // Day Visitor Card ?>
-                <span class="devotee-name" style="text-align:center;">
-                    <?php echo htmlspecialchars($devotee['first_name'] . ' ' . $devotee['last_name']); ?>
-                </span>
-                    <?php if (!empty($devotee['accommodation_name']) && $devotee['accommodation_name'] !== "N/A" && $devotee['accommodation_name'] !== "Own Arrangement (Outside)" && $devotee['accommodation_name'] !== "Local"): ?>
-                    <span class="devotee-status" style="margin: 20px 0; margin: 5px 0; font-size: 24px;">Temporary Accommodation for 2025</span>
-                    <?php else: ?>
-                    <span class="devotee-status" style="margin: 20px 0; margin: 5px 0;">Temporary</span>
-                    <?php endif; ?>
-                    <hr style="width: 80%; margin: 5px 0; margin: 0 auto;">
-                    <?php if (!empty($devotee['accommodation_name']) && $devotee['accommodation_name'] !== "N/A" && $devotee['accommodation_name'] !== "Own Arrangement (Outside)" && $devotee['accommodation_name'] !== "Local"): ?>
-                        <span style="display: block; text-align: center; margin-bottom: 2px; margin-top: 10px; font-size: 14px; font-weight: bold;">Staying at: </span>
-                        <div class="details-row" style="margin-top: 0; margin-bottom:10px;">
-                            <div class="details-row" style="text-align: center;">
-                                <span class="card-data"
-                                      style="font-size: 16px; font-weight: bold; display: inline-block; margin-left: 0;">
-                                    <?php echo htmlspecialchars($devotee['accommodation_name']); ?>
-                                </span>
-                            </div>
-                        </div>
-                    <?php elseif (!empty($devotee['devotee_referral']) && $devotee['devotee_referral'] !== "N/A"): ?>
-                        <span style="display: block; text-align: center; margin-bottom: 2px; margin-top: 10px; font-size: 14px; font-weight: bold;">Referred by: </span>
-                        <div class="details-row" style="margin-top: 0; margin-bottom:10px;">
-                            <div class="details-row" style="text-align: center;">
-                                <span class="card-data"
-                                      style="font-size: 16px; font-weight: bold; display: inline-block; margin-left: 0;">
-                                    <?php echo htmlspecialchars($devotee['devotee_referral']); ?>
-                                </span>
-                            </div>
-                        </div>
-                    <?php endif; ?>
-                    <?php // Photo and other details are intentionally omitted for Day Visitor ?>
-
-                <?php else: // Standard Card (including Blocked, etc.) ?>
                     <table style="width:100%;">
                         <tr>
                             <td style="width:65%; vertical-align:top;">
@@ -376,7 +319,6 @@ $bannerImgSrc = $webroot . 'assets/img/banner.png';
                     <span class="card-footer">
                         This card is not valid after <?php echo isset($_SESSION['eventDesc']) ? htmlspecialchars($_SESSION['eventDesc']) : 'EVENT_END_DATE'; ?>
                     </span>
-                <?php endif; // End of conditional card content ?>
 
             </div>
         </div>

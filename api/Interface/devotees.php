@@ -241,7 +241,7 @@ Class Devotee {
                 case "RPC": //Recently printed Cards
                     $query = $query .
                                 " LEFT OUTER JOIN card_print_archive cpl on d.Devotee_Key = cpl.Devotee_Key "
-                              . " WHERE cpl.Print_Status = 'A'  ORDER BY d.Devotee_Record_update_date_time Desc  LIMIT 50";
+                              . " WHERE cpl.Print_Status = 'A'  ORDER BY cpl.Print_Requested_Date_Time DESC  LIMIT 50";
                     
                     break;
 

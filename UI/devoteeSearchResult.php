@@ -71,20 +71,7 @@ $eventId = $config_data['event_id'];
 
                 if (printString.length > 1) {
 
-                    // if query string url has key="TMP" then open rptCardsPrintTemp.php file #
-
-                    const queryParams = new URLSearchParams(window.location.search);
-
-                    // Day-visitor queue (TMP): use resident card layout in rptCardsPrint.php.
-                    // rptCardsPrintTemp.php kept for future switch-back (?template=dayvisitor).
-                    const useDayVisitorPrintTemplate = false;
-                    if (useDayVisitorPrintTemplate && queryParams.get('key') === 'TMP') {
-                        window.open("./rptCardsPrintTemp.php?key=" + printString.substr(0, printString.length - 1) + "&mode=PCD");
-                    } else {
-                        window.open("./rptCardsPrint.php?key=" + printString.substr(0, printString.length - 1) + "&mode=PCD");
-                    }
-
-                    // window.open("./rptCardsPrint.php?key=" + printString.substr(0, printString.length - 1) + "&mode=PCD");
+                    window.open("./rptCardsPrint.php?key=" + printString.substr(0, printString.length - 1) + "&mode=PCD");
                     //window.location.assign("./devoteeSearchResult.php?mode=SET&key=CTP");
 
                     //if(confirm("Card printed successfully?")){
