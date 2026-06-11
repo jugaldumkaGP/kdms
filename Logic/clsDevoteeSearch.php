@@ -69,6 +69,9 @@ private $debug = false;
         if (in_array($mode, ['SET', 'CUS'], true)) {
             $url .= '&include_photos=0';
         }
+        if ($mode === 'SET' && !empty($this->request['filter'])) {
+            $url .= '&filter=' . urlencode((string) $this->request['filter']);
+        }
         if($this->debug){return  $url; die;}
         curl_setopt($ch, CURLOPT_URL, $url);
         curl_setopt($ch,CURLOPT_SSL_VERIFYPEER, false);

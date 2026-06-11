@@ -35,7 +35,8 @@ Class Devotee {
                     break;
 
                     case "SET": //set query, like devotee without photo
-                            return $this->searchDevotee($requestData['key'], $requestData['eventId'], $includePhotos);
+                            $filter = trim((string) ($requestData['filter'] ?? ''));
+                            return $this->searchDevotee($requestData['key'], $requestData['eventId'], $includePhotos, $filter);
                     break;
                 
                     case "CUS": //Custom query                            
@@ -155,7 +156,7 @@ Class Devotee {
         return $DevoteeDetails;
     }
     
-    private function searchDevotee($requestData, $eventId = "", bool $includePhotos = false){
+    private function searchDevotee($requestData, $eventId = "", bool $includePhotos = false, string $filter = ""){
         $res = array();
         $res['status'] = false;
         $res['message'] = '';
@@ -189,7 +190,7 @@ Class Devotee {
                , (did.Devotee_ID_Image_Gcs_Path IS NOT NULL OR did.Devotee_ID_Image IS NOT NULL) AS has_id_image";
         $query = "select " .
                     "d.devotee_key, CONCAT(d.devotee_first_name, ' ', d.devotee_last_name) as Devotee_Name " .
-                    ", d.devotee_station, d.devotee_cell_phone_number, d.devotee_status " .
+                    ", d.devotee_station, d.devotee_cell_phone_number, d.devotee_referral " .
                     $photoSelect .
                     ", d.devotee_station " .
                     ", d.Devotee_ID_Type " .
@@ -209,6 +210,7 @@ Class Devotee {
                                 " (d.Devotee_First_Name is null OR d.Devotee_Last_Name is null)  " .
                               "AND  " .
                                 "(did.Devotee_ID_Image is not null OR dp.Devotee_Photo is not null)  " .
+                                $this->presetFilterSql($filter) .
                                 "ORDER BY d.Devotee_Record_update_date_time Desc  LIMIT 50";
                     
                 break;
@@ -219,20 +221,25 @@ Class Devotee {
                                 "(d.Devotee_First_Name is not null OR d.Devotee_Last_Name is NOT null)  " .
                               "AND  " .
                                 "(did.Devotee_ID_Image is null OR dp.Devotee_Photo is  null)  " .
+                                $this->presetFilterSql($filter) .
                                 "ORDER BY d.Devotee_Record_update_date_time Desc  LIMIT 50";
                 break;
             
             case "CTP": //Card print queue
                 $query = $query .
                             " LEFT OUTER JOIN card_print_log cpl on d.Devotee_Key = cpl.Devotee_Key "
-                          . " WHERE cpl.Print_Status = 'A' and d.Devotee_Status != 'D' ORDER BY d.Devotee_Record_update_date_time Desc  LIMIT 50";
+                          . " WHERE cpl.Print_Status = 'A' and d.Devotee_Status != 'D'"
+                          . $this->presetFilterSql($filter)
+                          . " ORDER BY d.Devotee_Record_update_date_time Desc  LIMIT 50";
                 
                 break;
             
             case "TMP": // temporary Card print queue
                 $query = $query .
                             " LEFT OUTER JOIN card_print_log cpl on d.Devotee_Key = cpl.Devotee_Key "
-                          . " WHERE cpl.Print_Status = 'A' and d.Devotee_Status = 'D' and d.Devotee_Type = 'T' ORDER BY d.Devotee_Record_update_date_time Desc  LIMIT 50";
+                          . " WHERE cpl.Print_Status = 'A' and d.Devotee_Status = 'D' and d.Devotee_Type = 'T'"
+                          . $this->presetFilterSql($filter)
+                          . " ORDER BY d.Devotee_Record_update_date_time Desc  LIMIT 50";
 
                 break;
 
@@ -241,7 +248,9 @@ Class Devotee {
                 case "RPC": //Recently printed Cards
                     $query = $query .
                                 " LEFT OUTER JOIN card_print_archive cpl on d.Devotee_Key = cpl.Devotee_Key "
-                              . " WHERE cpl.Print_Status = 'A'  ORDER BY cpl.Print_Requested_Date_Time DESC  LIMIT 50";
+                              . " WHERE cpl.Print_Status = 'A'"
+                              . $this->presetFilterSql($filter)
+                              . " ORDER BY cpl.Print_Requested_Date_Time DESC  LIMIT 50";
                     
                     break;
 
@@ -249,6 +258,7 @@ Class Devotee {
                 $query = $query .
                     " WHERE da.Devotee_Key IS NOT NULL"
                     . " AND LOWER(da.Accomodation_Key) NOT IN ('othr', 'lcl', 'ownar')"
+                    . $this->presetFilterSql($filter)
                     . " ORDER BY d.Devotee_Record_update_date_time Desc LIMIT 500";
                 break;
 
@@ -427,6 +437,23 @@ Class Devotee {
         return $devoteeSearchResult;
     }
     
+    /**
+     * Optional AND clause for SET preset searches (CTP, TMP, RPC, etc.) — reuses prepareSearchClause.
+     */
+    private function presetFilterSql(string $filter): string
+    {
+        $filter = trim($filter);
+        if ($filter === '') {
+            return '';
+        }
+        $clause = $this->prepareSearchClause($filter);
+        if ($clause === '') {
+            return '';
+        }
+
+        return ' AND ' . $clause;
+    }
+
     private function prepareSearchClause($requestData) {
         $searchClause = "";
         $subClauses = "";
@@ -495,7 +522,15 @@ Class Devotee {
                     case "remark" :
                     case "Devotee Remark" :
                         $searchClause = $searchClause . "(d.devotee_remarks like '%" . str_replace(' ', '+', $subValue) . "%' OR d.devotee_remarks like '%" . $subValue . "%') AND ";
-                        break;                    
+                        break;
+
+                    // Referral
+                    case "devotee_referral" :
+                    case "referral" :
+                    case "Devotee Referral" :
+                    case "DevoteeReferral" :
+                        $searchClause = $searchClause . "(d.devotee_referral like '%" . str_replace(' ', '+', $subValue) . "%' OR d.devotee_referral like '%" . $subValue . "%') AND ";
+                        break;
                     
                     // Devotee key
                     case "devotee_key" :

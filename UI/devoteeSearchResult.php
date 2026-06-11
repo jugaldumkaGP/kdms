@@ -12,6 +12,9 @@ include_once dirname(__DIR__) . '/Logic/clsOptionHandler.php';
 
 $eventId = $config_data['event_id'];
 
+/** SET preset keys that support optional filter= deep search (mode=SET only). */
+const SET_PRESET_KEYS = ['PWD', 'DWP', 'CTP', 'TMP', 'RPC', 'AR'];
+
 //if($debug){var_dump( $_GET);}
 ?>
 <!DOCTYPE html>
@@ -26,34 +29,57 @@ $eventId = $config_data['event_id'];
             }
 
 
-            //javascript function for ajax call
-            function submitSearch(formId, flag) {
+            var SET_PRESET_KEYS = <?= json_encode(SET_PRESET_KEYS) ?>;
 
-                searchForm = document.getElementById(formId);
-                var I = 0;
-                var searchString = ""
-                for (I = 0; I < searchForm.length; I++) {
+            function buildFilterString(formId) {
+                var searchForm = document.getElementById(formId);
+                var searchString = "";
+                for (var I = 0; I < searchForm.length; I++) {
                     if (searchForm[I].value != "") {
-                        //alert(searchForm[I].id + ": " + searchForm[I].value);
                         searchString = searchString + searchForm[I].id + "=" + encodeURI(searchForm[I].value) + ",";
                     }
                 }
-                //alert(searchString);
-
                 if (searchString.length > 1) {
-                    window.location = "./devoteeSearchResult.php?mode=CUS&key=" + searchString.substr(0, searchString.length - 1);
+                    return searchString.substr(0, searchString.length - 1);
+                }
+                return "";
+            }
+
+            //javascript function for ajax call
+            function submitSearch(formId, flag) {
+                var filterString = buildFilterString(formId);
+                var q = new URLSearchParams(window.location.search);
+                var mode = q.get('mode');
+                var presetKey = q.get('key');
+
+                if (mode === 'SET' && presetKey && SET_PRESET_KEYS.indexOf(presetKey) !== -1) {
+                    var url = "./devoteeSearchResult.php?mode=SET&key=" + encodeURIComponent(presetKey);
+                    if (filterString !== "") {
+                        url += "&filter=" + encodeURIComponent(filterString);
+                    }
+                    window.location = url;
+                    return;
+                }
+
+                if (filterString !== "") {
+                    window.location = "./devoteeSearchResult.php?mode=CUS&key=" + filterString;
                 } else {
                     alert("Please specify a search criteria!");
                 }
             }
 
-            function printQueueReturnKey() {
+            function printQueueReturnUrl() {
                 var q = new URLSearchParams(window.location.search);
                 var key = q.get('key');
-                if (key === 'TMP' || key === 'RPC' || key === 'CTP') {
-                    return key;
+                if (key !== 'TMP' && key !== 'RPC' && key !== 'CTP') {
+                    key = 'CTP';
                 }
-                return 'CTP';
+                var url = "./devoteeSearchResult.php?mode=SET&key=" + encodeURIComponent(key);
+                var filter = q.get('filter');
+                if (filter) {
+                    url += "&filter=" + encodeURIComponent(filter);
+                }
+                return url;
             }
 
             function submitPrint(formId, flag) {
@@ -86,7 +112,7 @@ $eventId = $config_data['event_id'];
 
                             if (r['flag'] == true) {
                                 alert("Card removed from the printing queue!");
-                                window.location.assign("./devoteeSearchResult.php?mode=SET&key=" + printQueueReturnKey());
+                                window.location.assign(printQueueReturnUrl());
                             } else {
                                 alert(r['message']);
                                 updateSuccess = false;
@@ -130,7 +156,7 @@ $eventId = $config_data['event_id'];
 
                             if (r['flag'] == true) {
                                 alert("Card removed from the printing queue!");
-                                window.location.assign("./devoteeSearchResult.php?mode=SET&key=" + printQueueReturnKey());
+                                window.location.assign(printQueueReturnUrl());
                             } else {
                                 alert(r['message']);
                                 updateSuccess = false;
@@ -175,14 +201,30 @@ $eventId = $config_data['event_id'];
             <?php
             $debug = false;
             $searchKey = '';
+            $searchMode = isset($_GET['mode']) ? (string) $_GET['mode'] : '';
             $gridTitle = '';
             $showSelection = false;
-            $hideSearchArea = false;
+            $hideSearchArea = true;
             $response = [];
             $accommodations = [];
+            $filterValues = [];
+
+            if (!empty($_GET['filter'])) {
+                foreach (explode(',', (string) $_GET['filter']) as $pair) {
+                    if (strpos($pair, '=') === false) {
+                        continue;
+                    }
+                    [$fKey, $fVal] = explode('=', $pair, 2);
+                    $filterValues[urldecode($fKey)] = urldecode($fVal);
+                }
+            }
+
+            $filterField = static function (string $field) use ($filterValues): string {
+                return htmlspecialchars((string) ($filterValues[$field] ?? ''), ENT_QUOTES, 'UTF-8');
+            };
 
             if (!empty($_GET['key'])) {
-                $searchKey = $_GET['key'];
+                $searchKey = (string) $_GET['key'];
 
                 switch ($searchKey) {
                     case "CUS": //Future use.. isn't used currently
@@ -203,7 +245,7 @@ $eventId = $config_data['event_id'];
                         break;
 
                     case "TMP":
-                        $gridTitle = "Devotee Cards to be Printed";
+                        $gridTitle = "Day Visitor Devotee Cards to be Printed";
                         $showSelection = TRUE;
                         break;
 
@@ -226,14 +268,17 @@ $eventId = $config_data['event_id'];
                 
                 if($debug){echo "reaching after API call.."; var_dump( $_GET); var_dump($response); die;}
                 unset($devoteeSearch);
+            }
 
-                $hideSearchArea = TRUE;
-            } else { //If custom search and criteria has not been specified, load accommodation options and available spots                
+            // Search form: SET presets (deep filter via filter=); CUS landing (empty key) for custom search entry.
+            if ($searchMode === 'SET' || ($searchMode === 'CUS' && $searchKey === '')) {
+                $hideSearchArea = false;
                 $loadAccommodation = new clsOptionHandler("Accommodation");
                 $loadAccommodation->setEventId($eventId);
                 $accommodations = $loadAccommodation->getOptions();
                 unset($loadAccommodation);
             }
+
             if($debug){echo "Probably empty values.."; var_dump( $_GET); var_dump($response); die;}
             ?>
                 <!-- End Navbar -->
@@ -254,25 +299,25 @@ $eventId = $config_data['event_id'];
                                         <div class="col-md-3">
                                             <div class="form-group">
                                                 <label class="bmd-label-floating">First Name</label>
-                                                <input type="text" class="form-control" name="devotee_first_name" id="devotee_first_name">
+                                                <input type="text" class="form-control" name="devotee_first_name" id="devotee_first_name" value="<?= $filterField('devotee_first_name') ?>">
                                             </div>
                                         </div>
                                         <div class="col-md-3">
                                             <div class="form-group">
                                                 <label class="bmd-label-floating">Last Name</label>
-                                                <input type="text" class="form-control" name="devotee_last_name" id="devotee_last_name" >
+                                                <input type="text" class="form-control" name="devotee_last_name" id="devotee_last_name" value="<?= $filterField('devotee_last_name') ?>">
                                             </div>
                                         </div>
                                         <div class="col-md-3">
                                             <div class="form-group">
                                                 <label class="bmd-label-floating">Cell Phone Number</label>
-                                                <input type="text" class="form-control" name="devotee_cell_phone_number" id="devotee_cell_phone_number" >
+                                                <input type="text" class="form-control" name="devotee_cell_phone_number" id="devotee_cell_phone_number" value="<?= $filterField('devotee_cell_phone_number') ?>">
                                             </div>
                                         </div>
                                         <div class="col-md-3">
                                             <div class="form-group" >
                                                 <label class="bmd-label-floating" >ID Number</label>
-                                                <input type="text" class="form-control" name="devotee_id_number" id="devotee_id_number" >
+                                                <input type="text" class="form-control" name="devotee_id_number" id="devotee_id_number" value="<?= $filterField('devotee_id_number') ?>">
                                             </div>
                                         </div>
                                     </div>
@@ -284,8 +329,13 @@ $eventId = $config_data['event_id'];
                                                     <option value="">-Any Accommodation-</option>
                                                         <?php
                                                         if (!empty($accommodations)) {
+                                                            $selectedAccom = (string) ($filterValues['devotee_accommodation_key'] ?? '');
                                                             foreach ($accommodations as $accommodation) {
-                                                                print_r("<option value='" . $accommodation['accomodation_key'] . "'");
+                                                                $accomKey = (string) $accommodation['accomodation_key'];
+                                                                print_r("<option value='" . htmlspecialchars($accomKey, ENT_QUOTES, 'UTF-8') . "'");
+                                                                if ($selectedAccom !== '' && strcasecmp($selectedAccom, $accomKey) === 0) {
+                                                                    print_r(" selected");
+                                                                }
                                                                 Print_r(">" . urldecode($accommodation['Accomodation_Name']) . " - " . $accommodation['Available_Count'] . "</option>");
                                                             }
                                                         }
@@ -297,25 +347,35 @@ $eventId = $config_data['event_id'];
                                             <div class="form-group" >
                                                 <label class="bmd-label-floating">Status</label>
                                                 <select type="text" class="form-control" name="devotee_status" id="devotee_status" >
-                                                    <option value="">-All Status-</option>
-                                                    <option value="G">Good</option>
-                                                    <option value="A">Average</option>
-                                                    <option value="D">Day Visitor</option>
-                                                    <option value="S">Senior Citizen</option>
-                                                    <option value="B">Black Listed</option>
+                                                    <?php
+                                                    $selectedStatus = (string) ($filterValues['devotee_status'] ?? '');
+                                                    $statusOptions = [
+                                                        '' => '-All Status-',
+                                                        'G' => 'Good',
+                                                        'A' => 'Average',
+                                                        'D' => 'Day Visitor',
+                                                        'S' => 'Senior Citizen',
+                                                        'B' => 'Black Listed',
+                                                    ];
+                                                    foreach ($statusOptions as $val => $label) {
+                                                        $sel = ($selectedStatus !== '' && strcasecmp($selectedStatus, (string) $val) === 0) ? ' selected' : '';
+                                                        echo '<option value="' . htmlspecialchars((string) $val, ENT_QUOTES, 'UTF-8') . '"' . $sel . '>'
+                                                            . htmlspecialchars($label, ENT_QUOTES, 'UTF-8') . '</option>';
+                                                    }
+                                                    ?>
                                                 </select>
                                             </div>
                                         </div>
                                         <div class="col-md-3">
                                             <div class="form-group" style="margin-top:62px">
                                                 <label class="bmd-label-floating">Station</label>
-                                                <input type="text" class="form-control" name="devotee_station" id="devotee_station" >
+                                                <input type="text" class="form-control" name="devotee_station" id="devotee_station" value="<?= $filterField('devotee_station') ?>">
                                             </div>
                                         </div>
                                         <div class="col-md-3">
                                             <div class="form-group" style="margin-top:62px">
-                                                <label class="bmd-label-floating">Remarks</label>
-                                                <input type="text" class="form-control" name="devotee_remarks" id="devotee_remarks" >
+                                                <label class="bmd-label-floating">Referral</label>
+                                                <input type="text" class="form-control" name="devotee_referral" id="devotee_referral" value="<?= $filterField('devotee_referral') ?>">
                                             </div>
                                         </div>
 
@@ -359,7 +419,7 @@ $eventId = $config_data['event_id'];
                                                         Devotee ID
                                                     </th>
                                                     <th>
-                                                        Status
+                                                        Referral
                                                     </th>
                                                     <th>
                                                         Station
@@ -388,13 +448,12 @@ if (!empty($response)) {
         $devoteeKey = "--Unavailable--";
         $devoteeName = "--Unavailable--";
         $devoteeStation = "--Unavailable--";
-        $devoteeStatus = "--Unavailable--";
+        $devoteeReferral = "--Unavailable--";
         $devoteeCellNumber = "--Unavailable--";
         $devoteeAccommodation = "--Unavailable--";
         $devoteePhoto = "";
         $devoteeIdImage = "";
         $devoteeID = "";
-        $devoteeStatusDetail = "Active";
 
         if (!empty($devoteeRecord['devotee_key'])) {
             $devoteeKey = urldecode($devoteeRecord['devotee_key']);
@@ -412,30 +471,10 @@ if (!empty($response)) {
             $devoteeAccommodation = urldecode($devoteeRecord['accomodation_name']);
         }
 
-        if (!empty($devoteeRecord['devotee_status'])) {
-            
-            $devoteeStatus = urldecode($devoteeRecord['devotee_status']);
-            switch ($devoteeStatus) {
-                case "G":
-                    $devoteeStatusDetail = "Good";
-                    break;
-
-                case "A":
-                    $devoteeStatusDetail = "Average";
-                    break;
-
-                case "D":
-                    $devoteeStatusDetail = "Day Visitor";
-                    break;
-
-                case "S":
-                    $devoteeStatusDetail = "Senior Citizen";
-                    break;
-
-                case "B":
-                    $devoteeStatusDetail = "Black Listed";
-                    break;
-            }
+        if (!empty($devoteeRecord['devotee_referral'])) {
+            $devoteeReferral = urldecode($devoteeRecord['devotee_referral']);
+        } elseif (!empty($devoteeRecord['Devotee_Referral'])) {
+            $devoteeReferral = urldecode($devoteeRecord['Devotee_Referral']);
         }
 
         if (!empty($devoteeRecord['devotee_cell_phone_number'])) {
@@ -462,7 +501,7 @@ if (!empty($response)) {
                             <br><a class='small' href='devoteeMergeUtility.php?anchor=" . urlencode($devoteeKey) . "'>Find duplicates</a>
                         </td>
                         <td>
-                            <a href='addDevoteeI.php?devotee_key=" . $devoteeKey . "'>" . $devoteeStatusDetail . "</a>
+                            <a href='addDevoteeI.php?devotee_key=" . $devoteeKey . "'>" . $devoteeReferral . "</a>
                         </td>
                         <td>
                             <a href='addDevoteeI.php?devotee_key=" . $devoteeKey . "'>" . $devoteeStation . "</a>
