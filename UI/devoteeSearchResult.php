@@ -367,6 +367,7 @@ const SET_PRESET_KEYS = ['PWD', 'DWP', 'CTP', 'TMP', 'RPC', 'AR'];
                                                         'D' => 'Day Visitor',
                                                         'S' => 'Senior Citizen',
                                                         'B' => 'Black Listed',
+                                                        'PO' => 'Prasad Only',
                                                     ];
                                                     foreach ($statusOptions as $val => $label) {
                                                         $sel = ($selectedStatus !== '' && strcasecmp($selectedStatus, (string) $val) === 0) ? ' selected' : '';

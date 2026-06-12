@@ -47,6 +47,10 @@ final class RegistrationService
             $candidateKey = GenerateId::generate($this->db);
         }
 
+        // Determine status: 'PO' for Prasad Only registrations, 'D' for standard day visitors
+        $prasadOnly = !empty($input['prasad_only']) && $input['prasad_only'] !== false && $input['prasad_only'] !== 'false';
+        $status = $prasadOnly ? 'PO' : 'D';
+
         $idPath = $this->sanitizeGcsPath(
             (string) ($input['id_gcs_path'] ?? $input['id_staging_gcs_path'] ?? ''),
             $candidateKey
@@ -54,7 +58,7 @@ final class RegistrationService
         $selfiePath = $this->sanitizeGcsPath((string) ($input['selfie_gcs_path'] ?? ''), $candidateKey);
         $eventId = reg_active_event_id();
 
-        $dedup = KdmsApiClient::deduplicate(RegistrationFields::toDedupPayload($candidateKey, $fields, $eventId));
+        $dedup = KdmsApiClient::deduplicate(RegistrationFields::toDedupPayload($candidateKey, $fields, $eventId, $status));
         if (!$dedup['ok']) {
             return [
                 'success' => false,
@@ -79,9 +83,9 @@ final class RegistrationService
         if ($action === 'merged') {
             try {
                 $this->db->beginTransaction();
-                $this->saveDevoteeRow($survivorKey, $fields, true);
+                $this->saveDevoteeRow($survivorKey, $fields, true, $status);
                 $this->attachChildRows($survivorKey, $fields['idType'], $idPath, $selfiePath);
-                if ($eventId !== '' && !$this->hasAccommodationForEvent($survivorKey, $eventId)) {
+                if ($status !== 'PO' && $eventId !== '' && !$this->hasAccommodationForEvent($survivorKey, $eventId)) {
                     AccommodationAssigner::assignOther($this->db, $survivorKey, $eventId);
                 }
                 $this->db->commit();
@@ -96,9 +100,11 @@ final class RegistrationService
         } else {
             try {
                 $this->db->beginTransaction();
-                $this->saveDevoteeRow($survivorKey, $fields, false);
+                $this->saveDevoteeRow($survivorKey, $fields, false, $status);
                 $this->attachChildRows($survivorKey, $fields['idType'], $idPath, $selfiePath);
-                AccommodationAssigner::assignOther($this->db, $survivorKey, $eventId);
+                if ($status !== 'PO') {
+                    AccommodationAssigner::assignOther($this->db, $survivorKey, $eventId);
+                }
                 $this->db->commit();
             } catch (PDOException $e) {
                 if ($this->db->inTransaction()) {
@@ -124,7 +130,7 @@ final class RegistrationService
     /**
      * @param array<string, string> $fields
      */
-    private function saveDevoteeRow(string $key, array $fields, bool $overwrite): void
+    private function saveDevoteeRow(string $key, array $fields, bool $overwrite, string $status = 'D'): void
     {
         if ($overwrite) {
             $this->patchDevoteeRowFromRegistration($key, $fields);
@@ -147,7 +153,7 @@ final class RegistrationService
         );
         $params = $this->devoteeBindParams($key, $fields, 'REG-PWA');
         $params['type'] = 'T';
-        $params['status'] = 'D';
+        $params['status'] = $status;
         $stmt->execute($params);
     }
 

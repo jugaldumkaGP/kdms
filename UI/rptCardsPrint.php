@@ -277,6 +277,11 @@ $bannerImgSrc = $webroot . 'assets/img/banner.png';
                                         echo htmlspecialchars($display_name);
                                     ?>
                                 </span>
+                                <?php if ($devotee['status'] === 'PO'): ?>
+                                <div style="margin-top: 10px; margin-bottom: 6px;">
+                                    <span style="display:block; font-weight:bold; font-size:20px; color:#b8490a; line-height:1.3;">केवल प्रसाद के लिए</span>
+                                </div>
+                                <?php else: ?>
                                 <div class="details-row">
                                     <span class="card-label">Reg No.:</span>
                                     <span class="card-data"><?php echo htmlspecialchars($devotee['key']); ?></span>
@@ -299,6 +304,7 @@ $bannerImgSrc = $webroot . 'assets/img/banner.png';
                                     <span class="card-label">Mobile No:</span>
                                     <span class="card-data"><?php echo htmlspecialchars($devotee['cell_phone_number']); ?></span>
                                 </div>
+                                <?php endif; ?>
                                 <?php endif; ?>
                             </td>
                             <td style="width:35%; text-align:center; vertical-align:top; padding-top:2px; padding-right:6px;">

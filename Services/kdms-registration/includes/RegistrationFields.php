@@ -202,7 +202,7 @@ final class RegistrationFields
      * @param array<string, string> $fields
      * @return array<string, mixed>
      */
-    public static function toDedupPayload(string $devoteeKey, array $fields, string $eventId): array
+    public static function toDedupPayload(string $devoteeKey, array $fields, string $eventId, string $status = 'D'): array
     {
         return [
             'Devotee_Key' => $devoteeKey,
@@ -221,7 +221,7 @@ final class RegistrationFields
             'Devotee_State' => $fields['state'],
             'Devotee_Zip' => strlen($fields['zip']) > 12 ? substr($fields['zip'], 0, 12) : $fields['zip'],
             'Devotee_Type' => 'T',
-            'Devotee_Status' => 'D',
+            'Devotee_Status' => $status,
             'eventId' => $eventId,
         ];
     }

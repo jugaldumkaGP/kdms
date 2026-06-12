@@ -522,6 +522,11 @@ $is_key_available = false;
                                                                 print_r("selected");
                                                             }
                                                             ?>>Black Listed</option>
+                                                            <option value="PO" <?php
+                                                            if (strcasecmp((string)$devotee_status, "PO") === 0) {
+                                                                print_r("selected");
+                                                            }
+                                                            ?>>Prasad Only</option>
                                                         </select>
                                                     </div>
                                                 </div>

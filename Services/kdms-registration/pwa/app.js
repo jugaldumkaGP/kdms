@@ -44,6 +44,7 @@
   let idScanLocked = false;
   let idPreviewObjectUrl = '';
   let pickingIdFile = false;
+  let prasadOnly = false;
 
   const $ = (sel) => document.querySelector(sel);
   const form = $('#reg-form');
@@ -97,6 +98,24 @@
   }
 
   initReferralFromUrlParam();
+
+  /**
+   * Optional query param ?PO= — marks registration as Prasad Only.
+   * Accepts any casing: PO=True, po=true, PO=1, PO=yes, etc.
+   */
+  function initPrasadOnlyFromUrlParam() {
+    try {
+      const raw = new URLSearchParams(window.location.search).get('PO')
+        || new URLSearchParams(window.location.search).get('po')
+        || '';
+      const truthy = ['true', '1', 'yes'];
+      prasadOnly = truthy.includes(raw.trim().toLowerCase());
+    } catch (e) {
+      prasadOnly = false;
+    }
+  }
+
+  initPrasadOnlyFromUrlParam();
 
   function showSpinner(on) {
     spinner.hidden = !on;
@@ -410,6 +429,7 @@
       Devotee_Zip: form.elements.Devotee_Zip.value.trim(),
       id_gcs_path: idGcsPath,
       selfie_gcs_path: selfieGcsPath,
+      prasad_only: prasadOnly,
       csrf_token: csrfToken
     };
     try {
