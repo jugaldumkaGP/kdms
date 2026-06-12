@@ -100,7 +100,7 @@
   initReferralFromUrlParam();
 
   /**
-   * Optional query param ?PO= — marks registration as Prasad Only.
+   * Optional query param ?PO= — marks registration as Prasad Only..
    * Accepts any casing: PO=True, po=true, PO=1, PO=yes, etc.
    */
   function initPrasadOnlyFromUrlParam() {
