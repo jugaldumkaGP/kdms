@@ -278,8 +278,8 @@ $bannerImgSrc = $webroot . 'assets/img/banner.png';
                                     ?>
                                 </span>
                                 <?php if ($devotee['status'] === 'PO'): ?>
-                                <div style="margin-top: 10px; margin-bottom: 6px;">
-                                    <span style="display:block; font-weight:bold; font-size:20px; color:#b8490a; line-height:1.3;">केवल प्रसाद के लिए</span>
+                                <div style="margin-top: 40px; margin-bottom: 6px;">
+                                    <span style="display:block; font-weight:bold; font-size:25px; color:#b8490a; line-height:1.3;">केवल प्रसाद के लिए</span>
                                 </div>
                                 <?php else: ?>
                                 <div class="details-row">
