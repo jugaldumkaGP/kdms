@@ -890,17 +890,22 @@ Class Devotee {
         $results = $this->conn->query($query);
         
         $devoteeSearchResult = array();
+        $seenKeys = [];
         $i = 0;
-        while($row = $results->fetchObject()){
+        while ($row = $results->fetchObject()) {
+            $devoteeKey = (string) ($row->devotee_key ?? '');
+            if ($devoteeKey === '' || isset($seenKeys[$devoteeKey])) {
+                continue;
+            }
+            $seenKeys[$devoteeKey] = true;
             if ($includePhotoBlobs) {
-                $devoteeKey = (string) ($row->devotee_key ?? '');
                 $row->{'Devotee_Photo'} = PhotoStorage::legacyBase64Photo($this->conn, $devoteeKey, $row->{'Devotee_Photo'} ?? null);
             } else {
                 $row->{'Devotee_Photo'} = '';
                 $row->{'has_photo'} = !empty($row->{'has_photo'});
             }
-            $devoteeSearchResult[]=$row;
-            $i = $i+1;
+            $devoteeSearchResult[] = $row;
+            $i = $i + 1;
         }
         //var_dump($devoteeSearchResult);die;
         if($i==0){
@@ -980,14 +985,20 @@ Class Devotee {
         $results = $this->conn->query($query);
         
         $devoteeSearchResult = array();
+        $seenKeys = [];
         $i = 0;
-        while($row = $results->fetchObject()){
+        while ($row = $results->fetchObject()) {
+            $devoteeKey = (string) ($row->devotee_key ?? '');
+            if ($devoteeKey === '' || isset($seenKeys[$devoteeKey])) {
+                continue;
+            }
+            $seenKeys[$devoteeKey] = true;
             $row->{'Devotee_Photo'} = '';
             if ($includePhotos) {
                 $row->{'has_photo'} = !empty($row->{'has_photo'});
             }
-            $devoteeSearchResult[]=$row;
-            $i = $i+1;
+            $devoteeSearchResult[] = $row;
+            $i = $i + 1;
         }
         //var_dump($devoteeSearchResult);die;
         if($i==0){
